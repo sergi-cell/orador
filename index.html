@@ -1,0 +1,1309 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ORADOR</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#05070c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ORADOR">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="icon" href="./icons/icon-192.png">
+<style>
+/* Tema oscuro único y deliberado: es una "System UI" de Solo Leveling,
+   un modo claro rompería el lenguaje de glow sobre negro. */
+:root{
+  color-scheme:dark;
+  --bg:#05070c; --panel:#0b1119; --panel2:#0e1622;
+  --cyan:#35e8ff; --purple:#a45bff; --pink:#ff3fb0;
+  --text:#dfe8f5; --dim:#7688a3; --danger:#ff5f6d; --gold:#ffc24b;
+  --line:rgba(53,232,255,.22);
+  --font-head:'Avenir Next Condensed','HelveticaNeue-CondensedBold','Roboto Condensed','Arial Narrow',system-ui,sans-serif;
+  --font-body:system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:ui-monospace,'SF Mono',Menlo,'JetBrains Mono',Consolas,monospace;
+}
+*{box-sizing:border-box}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+body{
+  margin:0; min-height:100vh; background:
+    radial-gradient(circle at 20% -10%, rgba(164,91,255,.18), transparent 45%),
+    radial-gradient(circle at 100% 10%, rgba(63,240,255,.14), transparent 40%),
+    var(--bg);
+  color:var(--text); font-family:var(--font-body); letter-spacing:.01em;
+  overflow-x:hidden;
+}
+#app{max-width:520px;margin:0 auto;padding:18px 16px 60px;min-height:100vh}
+.hud-panel{
+  background:linear-gradient(180deg, var(--panel), var(--panel2));
+  border:1px solid var(--line);
+  clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+  position:relative; padding:16px; margin-bottom:14px;
+}
+.hud-panel::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 20px rgba(63,240,255,.05);
+}
+.glow-cyan{color:var(--cyan);text-shadow:0 0 12px rgba(63,240,255,.6)}
+.glow-purple{color:var(--purple);text-shadow:0 0 12px rgba(164,91,255,.6)}
+h1,h2,h3{font-family:var(--font-head);margin:0 0 6px;font-weight:800;letter-spacing:.03em}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.dim{color:var(--dim);font-size:.8rem}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.brand{font-size:1.4rem;font-weight:900;letter-spacing:.15em}
+.brand span{color:var(--cyan)}
+.rank-badge{
+  font-family:var(--font-mono);font-weight:900;font-size:1.1rem;
+  border:2px solid var(--gold);color:var(--gold);border-radius:6px;
+  padding:2px 10px;text-shadow:0 0 8px rgba(255,207,92,.7);
+}
+.big-btn{
+  display:block;width:100%;padding:22px 16px;margin:18px 0;
+  background:linear-gradient(135deg, rgba(63,240,255,.15), rgba(164,91,255,.15));
+  border:1px solid var(--cyan); color:var(--cyan);
+  font-family:var(--font-head);font-size:1.25rem;font-weight:900;letter-spacing:.04em;
+  clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px);
+  cursor:pointer;text-align:center;transition:transform .12s, box-shadow .12s;
+  box-shadow:0 0 24px rgba(63,240,255,.15);
+}
+.big-btn:active{transform:scale(.98)}
+.btn{
+  display:inline-block;padding:10px 16px;background:var(--panel2);
+  border:1px solid rgba(255,255,255,.15);color:var(--text);
+  font-family:var(--font-head);font-weight:700;cursor:pointer;border-radius:4px;
+  text-align:center;
+}
+.btn.primary{border-color:var(--cyan);color:var(--cyan)}
+.btn.ghost{background:transparent;border-color:rgba(255,255,255,.1);color:var(--dim)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--panel2);border:1px solid rgba(255,255,255,.08);padding:10px;text-align:center;border-radius:4px}
+.stat .n{font-family:var(--font-mono);font-size:1.25rem;font-weight:900;color:var(--cyan);font-variant-numeric:tabular-nums}
+.xpbar{height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin:6px 0 2px}
+.xpbar>div{height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple))}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:10px 0}
+.week .d{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:.7rem;border-radius:4px;
+  border:1px solid rgba(255,255,255,.08);color:var(--dim);position:relative;
+}
+.week .d.today{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 10px rgba(63,240,255,.3)}
+.week .d.done{background:rgba(63,240,255,.12);color:var(--cyan)}
+.emotion-badge{
+  display:inline-flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:900;
+  padding:8px 14px;border-radius:20px;margin-bottom:14px;font-family:var(--font-mono);
+}
+.timer{font-family:var(--font-mono);font-size:2.6rem;font-weight:900;text-align:center;color:var(--cyan);text-shadow:0 0 16px rgba(53,232,255,.5);font-variant-numeric:tabular-nums}
+.slider-row{margin:12px 0}
+.slider-row label{display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:4px}
+input[type=range]{width:100%;accent-color:var(--cyan)}
+textarea,input[type=text]{
+  width:100%;background:var(--panel2);border:1px solid rgba(255,255,255,.12);
+  color:var(--text);padding:10px;font-family:var(--font-head);border-radius:4px;
+}
+.card-list .item{
+  background:var(--panel2);border:1px solid rgba(255,255,255,.08);
+  padding:12px;margin-bottom:8px;border-radius:4px;cursor:pointer;
+}
+.card-list .item:hover{border-color:var(--cyan)}
+.tag{display:inline-block;font-family:var(--font-mono);font-size:.65rem;padding:2px 8px;border-radius:10px;background:rgba(164,91,255,.15);color:var(--purple);margin-left:6px}
+.locked{opacity:.45}
+.nav{display:flex;gap:6px;margin-top:22px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px}
+.nav .btn{flex:1;font-size:.75rem;padding:8px 4px}
+.pulse-word{font-family:var(--font-mono);font-weight:900;font-size:1.05rem;color:var(--purple);padding:6px 10px;border:1px dashed var(--purple);border-radius:4px;text-align:center}
+video.mirror{width:100%;border-radius:8px;transform:scaleX(-1);background:#000;margin-bottom:10px}
+.pause-short{color:var(--dim)}
+.pause-long{color:var(--purple);font-weight:900}
+.emph{color:var(--gold);font-weight:900}
+.speed-tag{font-family:var(--font-mono);font-size:.7rem;color:var(--pink);border:1px solid var(--pink);border-radius:3px;padding:1px 6px;margin:0 4px}
+
+/* en movil: respeta la barra de estado / notch al instalarse como app */
+#app{padding-top:calc(18px + env(safe-area-inset-top));padding-bottom:calc(60px + env(safe-area-inset-bottom))}
+/* evita el zoom por doble toque y el retardo de 300ms en iOS */
+button,.item,.d{touch-action:manipulation}
+
+.flash-overlay{
+  position:fixed;inset:0;pointer-events:none;z-index:99;
+  background:radial-gradient(circle at 50% 50%, rgba(53,232,255,.35), transparent 70%);
+  animation:flashfade .65s ease-out forwards;
+}
+.flash-overlay.gold{background:radial-gradient(circle at 50% 50%, rgba(255,194,75,.4), transparent 70%)}
+@keyframes flashfade{from{opacity:1}to{opacity:0}}
+.levelup-toast{
+  position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:100;
+  background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid var(--gold);padding:16px 26px;text-align:center;
+  clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+  box-shadow:0 0 40px rgba(255,194,75,.3);animation:flashfade 2.4s ease-out forwards;
+}
+.sound-toggle{
+  background:none;border:1px solid rgba(255,255,255,.15);color:var(--dim);
+  border-radius:4px;padding:4px 9px;cursor:pointer;font-size:.95rem;line-height:1;
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+/* ---------------- sonido (motor portado de la app de hábitos) ----------------
+   El arreglo clave para iOS: si programas un sonido en un AudioContext todavía
+   "suspended", el sonido se descarta en silencio — no da error, no suena.
+   whenRunning() no programa nada hasta que el motor confirma que está corriendo. */
+let audioCtx = null;
+function getCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function soundOn(){ return localStorage.getItem('orador_sound') !== 'off'; }
+function whenRunning(fn){
+  if(!soundOn()) return;
+  try{
+    const ctx = getCtx();
+    if(ctx.state === 'running'){ fn(ctx); return; }
+    ctx.resume().then(()=>{ if(ctx.state === 'running') fn(ctx); }).catch(()=>{});
+  }catch(e){ /* audio no disponible */ }
+}
+let audioUnlockDone = false;
+function unlockAudio(){
+  if(audioUnlockDone) return;
+  whenRunning(ctx=>{
+    try{
+      const b = ctx.createBuffer(1,1,22050);
+      const s = ctx.createBufferSource();
+      s.buffer = b; s.connect(ctx.destination); s.start(0);
+      audioUnlockDone = true;
+    }catch(e){}
+  });
+}
+// se reintenta en cada toque de los primeros, no solo en el primero: así el motor
+// ya está caliente cuando el usuario toca el botón que de verdad suena
+['touchstart','touchend','mousedown','click'].forEach(evt=>{
+  document.addEventListener(evt, unlockAudio, {capture:true});
+});
+
+function beep(freq,duration,type,startTime,gainVal){
+  whenRunning(ctx=>{ try{
+    const osc=ctx.createOscillator(), gain=ctx.createGain();
+    osc.type=type; osc.frequency.value=freq;
+    osc.connect(gain).connect(ctx.destination);
+    const t=ctx.currentTime+startTime;
+    osc.start(t);
+    gain.gain.setValueAtTime(gainVal,t);
+    gain.gain.exponentialRampToValueAtTime(0.001,t+duration);
+    osc.stop(t+duration+0.02);
+  }catch(e){} });
+}
+function sweep(f1,f2,duration,startTime,gainVal,type){
+  whenRunning(ctx=>{ try{
+    const osc=ctx.createOscillator(), gain=ctx.createGain();
+    osc.type=type||'sawtooth';
+    const t=ctx.currentTime+startTime;
+    osc.frequency.setValueAtTime(f1,t);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1,f2),t+duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    gain.gain.setValueAtTime(gainVal,t);
+    gain.gain.exponentialRampToValueAtTime(0.001,t+duration);
+    osc.stop(t+duration+0.02);
+  }catch(e){} });
+}
+function thump(freq,duration,startTime,gainVal){
+  whenRunning(ctx=>{ try{
+    const osc=ctx.createOscillator(), gain=ctx.createGain();
+    osc.type='sine';
+    const t=ctx.currentTime+startTime;
+    osc.frequency.setValueAtTime(freq,t);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1,freq*0.4),t+duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    gain.gain.setValueAtTime(gainVal,t);
+    gain.gain.exponentialRampToValueAtTime(0.001,t+duration);
+    osc.stop(t+duration+0.02);
+  }catch(e){} });
+}
+function noiseBurst(duration,startTime,gainVal,filterFreq,filterType){
+  whenRunning(ctx=>{ try{
+    const size=Math.max(1,Math.floor(ctx.sampleRate*duration));
+    const buffer=ctx.createBuffer(1,size,ctx.sampleRate);
+    const data=buffer.getChannelData(0);
+    for(let i=0;i<size;i++) data[i]=Math.random()*2-1;
+    const noise=ctx.createBufferSource(); noise.buffer=buffer;
+    const filter=ctx.createBiquadFilter();
+    filter.type=filterType||'bandpass';
+    filter.frequency.value=filterFreq||1200;
+    const gain=ctx.createGain();
+    const t=ctx.currentTime+startTime;
+    gain.gain.setValueAtTime(gainVal,t);
+    gain.gain.exponentialRampToValueAtTime(0.001,t+duration);
+    noise.connect(filter).connect(gain).connect(ctx.destination);
+    noise.start(t); noise.stop(t+duration+0.02);
+  }catch(e){} });
+}
+function vibrate(pattern){
+  try{ if(navigator.vibrate && soundOn()) navigator.vibrate(pattern); }catch(e){}
+}
+function flashScreen(gold){
+  const el=document.createElement('div');
+  el.className='flash-overlay'+(gold?' gold':'');
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),650);
+}
+
+/* sonidos con nombre */
+function sfxTap(){ beep(880,0.03,'square',0,0.05); }
+function sfxStart(){
+  sweep(300,1200,0.22,0,0.07,'sawtooth');
+  noiseBurst(0.12,0,0.03,3500,'highpass');
+  beep(1400,0.08,'square',0.2,0.08);
+}
+function sfxTick(){ beep(1000,0.04,'square',0,0.07); }
+function sfxTimeUp(){
+  beep(880,0.12,'square',0,0.10);
+  beep(660,0.12,'square',0.13,0.10);
+  beep(440,0.22,'square',0.26,0.10);
+  thump(110,0.3,0.26,0.12);
+}
+function sfxComplete(){
+  beep(1200,0.05,'square',0,0.12);
+  beep(1800,0.08,'square',0.05,0.10);
+  thump(150,0.12,0,0.10);
+}
+function sfxFiller(){ beep(220,0.09,'sawtooth',0,0.09); }
+function sfxEmotion(){ beep(1320,0.05,'sine',0,0.06); }
+function sfxLevelUp(){
+  sweep(300,2400,0.45,0,0.08,'sawtooth');
+  noiseBurst(0.3,0,0.05,4000,'highpass');
+  [523.25,659.25,783.99,1046.5,1318.51].forEach((f,i)=>beep(f,0.16,'square',0.15+i*0.09,0.10));
+  thump(90,0.3,0.5,0.14);
+}
+function sfxRankUp(){
+  sweep(150,3200,0.6,0,0.09,'sawtooth');
+  noiseBurst(0.4,0,0.06,6000,'highpass');
+  [196,392,523.25,659.25,783.99,1046.5,1318.51].forEach((f,i)=>beep(f,0.2,'triangle',0.1+i*0.08,0.11));
+  thump(60,0.45,0.65,0.16);
+}
+
+const LS_KEY='orador_v4_state';
+const DAY_NAMES=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const DAY_TYPE=['feedback','emociones','velocidad','storytelling','vender','improvisacion','comunicador'];
+const DAY_LABEL={
+  emociones:'Emociones', velocidad:'Velocidad y pausas', storytelling:'Storytelling',
+  vender:'Vender una idea', improvisacion:'Improvisación', comunicador:'Copia a un gran comunicador', feedback:'Feedback'
+};
+
+const EMOTIONS={
+  neutro:{emoji:'🟢',label:'Neutro',color:'#3ff0ff'},
+  curioso:{emoji:'🟡',label:'Curioso',color:'#ffcf5c'},
+  enfadado:{emoji:'🔴',label:'Enfadado',color:'#ff4d5e'},
+  triste:{emoji:'🔵',label:'Triste',color:'#5b9dff'},
+  feliz:{emoji:'🟠',label:'Feliz',color:'#ff9a3f'},
+  inspirador:{emoji:'🟣',label:'Inspirador',color:'#a45bff'},
+  misterioso:{emoji:'⚫',label:'Misterioso',color:'#9aa5b8'}
+};
+
+const CONTENT = {
+  stories:[
+    {title:'El ascenso', segments:[
+      {e:'neutro', t:'Marta llevaba tres años en la misma empresa, haciendo el mismo trabajo, sin hacer preguntas.'},
+      {e:'curioso', t:'Un día encontró una carpeta olvidada en un servidor viejo: contratos de hace una década con cifras que no cuadraban.'},
+      {e:'enfadado', t:'Cuanto más leía, más claro tenía que llevaban años pagándole de menos a ella y a todo su equipo.'},
+      {e:'triste', t:'Pensó en todo lo que se había callado, en las veces que dudó de sí misma en lugar de dudar del sistema.'},
+      {e:'inspirador', t:'Esa noche escribió un correo a dirección. No pidió perdón por nada. Expuso los hechos, uno por uno.'},
+      {e:'feliz', t:'Tres semanas después, la ascendieron a directora financiera. La misma carpeta que casi ignora, cambió su vida.'}
+    ]},
+    {title:'La llamada', segments:[
+      {e:'misterioso', t:'El teléfono sonó a las 2 de la madrugada. Un número que no reconocía. Nadie hablaba, solo respiración.'},
+      {e:'curioso', t:'A la mañana siguiente, en su buzón, un sobre sin remitente con una sola palabra: "Mira".'},
+      {e:'triste', t:'Dentro había una foto suya de hace veinte años, en un lugar que había intentado olvidar.'},
+      {e:'enfadado', t:'Llamó a su hermano gritando, exigiendo saber quién más sabía lo que pasó aquel verano.'},
+      {e:'neutro', t:'Su hermano, en silencio, le dijo que se sentara. Tenía algo que explicarle desde el principio.'},
+      {e:'inspirador', t:'Y por primera vez en dos décadas, entendió que cargar un secreto solo, no lo hace más liviano.'}
+    ]},
+    {title:'El cliente imposible', segments:[
+      {e:'neutro', t:'Llevaba cuarenta minutos en la reunión y el cliente aún no había dicho una sola frase positiva.'},
+      {e:'enfadado', t:'"Esto no vale lo que cobráis", repitió por tercera vez, golpeando la mesa con el bolígrafo.'},
+      {e:'curioso', t:'Ella se quedó callada un segundo de más y le preguntó: "¿Qué tendría que pasar para que sí valiera la pena?"'},
+      {e:'misterioso', t:'El cliente se quedó mirándola. Nadie le había hecho esa pregunta en quince años de reuniones.'},
+      {e:'feliz', t:'Empezó a hablar de verdad: de su padre, del negocio familiar, del miedo a perderlo todo.'},
+      {e:'inspirador', t:'Firmaron el contrato ese mismo día. No por el precio. Por la pregunta que nadie más se atrevió a hacer.'}
+    ]},
+    {title:'Cien euros', segments:[
+      {e:'neutro', t:'Encontró un billete de cien euros doblado dentro de un libro de segunda mano.'},
+      {e:'feliz', t:'Pensó en gastarlo en algo absurdo, algo que nunca se permitiría comprar un día normal.'},
+      {e:'curioso', t:'Pero primero quiso saber de quién era el libro. Dentro había una dedicatoria: "Para cuando lo necesites. Papá".'},
+      {e:'triste', t:'Su padre había muerto hacía dos años. Nunca supo que ese libro había pasado por tantas manos.'},
+      {e:'misterioso', t:'Se preguntó cuántas otras señales de su padre estarían esperando, escondidas, en sitios que aún no había mirado.'},
+      {e:'inspirador', t:'No gastó el billete. Lo enmarcó. Y empezó a dejar sus propias notas dentro de libros, para desconocidos futuros.'}
+    ]},
+    {title:'El socio', segments:[
+      {e:'neutro', t:'Fundaron la empresa con quince mil euros entre los dos y una servilleta llena de números optimistas.'},
+      {e:'enfadado', t:'Dos años después descubrió que su socio había cobrado facturas a nombre de otra empresa, en silencio.'},
+      {e:'triste', t:'No fue el dinero lo que más dolió. Fue pensar en cada decisión que tomaron "juntos" sin serlo.'},
+      {e:'curioso', t:'En vez de denunciarlo, le propuso una reunión: quería entender por qué, antes que castigar nada.'},
+      {e:'inspirador', t:'Su socio se derrumbó, confesó el miedo a quebrar y a decepcionarlo. Rehicieron el acuerdo, con contadores de por medio.'}
+    ]},
+    {title:'La foto vieja', segments:[
+      {e:'neutro', t:'Vaciando el armario de su madre, encontró una caja de fotos que nunca había visto.'},
+      {e:'curioso', t:'En una de ellas, su madre con veinte años, en un país que jamás mencionó haber visitado.'},
+      {e:'misterioso', t:'Detrás, una fecha y una frase: "El día que casi no vuelvo".'},
+      {e:'triste', t:'Le preguntó por teléfono. Su madre tardó un minuto entero en responder, con la voz quebrada.'},
+      {e:'inspirador', t:'Esa noche entendió que su madre no era solo su madre: había sido, también, una desconocida valiente.'}
+    ]},
+    {title:'El examen', segments:[
+      {e:'neutro', t:'Le quedaban tres minutos y una pregunta entera por resolver, la más difícil del examen.'},
+      {e:'enfadado', t:'Pensó en todas las noches sin dormir, en el profesor que le dijo que no llegaría a tiempo.'},
+      {e:'curioso', t:'Entonces recordó un detalle absurdo, algo que su abuelo le contó de niño, sin relación aparente.'},
+      {e:'feliz', t:'Encajó. La respuesta salió sola, casi sin pensarla, como si llevara toda la vida esperando ese momento.'},
+      {e:'inspirador', t:'Aprobó con la nota más alta de su promoción. Por una pregunta. Y por no rendirse dos minutos antes.'}
+    ]},
+    {title:'El vuelo cancelado', segments:[
+      {e:'neutro', t:'Su vuelo se canceló seis horas antes de la reunión más importante de su carrera.'},
+      {e:'enfadado', t:'Discutió con tres empleados de la aerolínea, sin conseguir absolutamente nada, solo perder más tiempo.'},
+      {e:'curioso', t:'Un desconocido en la cola le ofreció compartir un coche privado hasta la ciudad, sin pedir nada a cambio.'},
+      {e:'misterioso', t:'Durante el trayecto, ese desconocido resultó ser el propio inversor con el que tenía la reunión.'},
+      {e:'feliz', t:'Cerraron el acuerdo en el coche, antes incluso de llegar a la sala de juntas.'}
+    ]},
+    {title:'La herencia', segments:[
+      {e:'neutro', t:'El testamento decía que la casa era para los tres hermanos, a partes iguales.'},
+      {e:'enfadado', t:'Discutieron durante meses sobre quién se quedaba con qué, hasta romper casi toda relación entre ellos.'},
+      {e:'triste', t:'Uno de ellos encontró, limpiando el desván, una carta de su padre pidiéndoles que no hicieran justo esto.'},
+      {e:'curioso', t:'La carta proponía algo distinto: vender la casa y usar el dinero para algo que hicieran juntos.'},
+      {e:'inspirador', t:'Montaron el pequeño negocio familiar que su padre siempre quiso, con el dinero de la casa que casi los separa.'}
+    ]},
+    {title:'El vecino nuevo', segments:[
+      {e:'curioso', t:'El vecino nuevo apenas hablaba, cargaba cajas él solo y evitaba mirar a los ojos.'},
+      {e:'misterioso', t:'Una noche escuchó gritos desde su piso, después silencio total durante tres días seguidos.'},
+      {e:'enfadado', t:'Llamó a la puerta dispuesto a exigir explicaciones, casi convencido de que algo grave pasaba ahí dentro.'},
+      {e:'triste', t:'El vecino abrió llorando: acababa de perder a su pareja y no sabía cómo decírselo a nadie.'},
+      {e:'inspirador', t:'Esa noche se sentaron en el rellano a hablar. Hoy son la familia que ninguno de los dos eligió, pero necesitaba.'}
+    ]},
+    {title:'La renuncia', segments:[
+      {e:'neutro', t:'Escribió la carta de renuncia tres veces distintas antes de decidirse a entregarla.'},
+      {e:'enfadado', t:'Diez años dando la cara por una empresa que nunca reconoció su trabajo en público.'},
+      {e:'curioso', t:'Su jefe, al leerla, le preguntó algo que no esperaba: "¿Qué necesitarías para quedarte?"'},
+      {e:'feliz', t:'Nadie le había hecho esa pregunta en una década. Y tenía, de hecho, una respuesta clara.'},
+      {e:'inspirador', t:'Se quedó, con otro cargo y otro sueldo. A veces renunciar es solo pedir, en voz alta, lo que mereces.'}
+    ]},
+    {title:'El préstamo', segments:[
+      {e:'neutro', t:'Pidió prestado a su hermano el dinero que le faltaba para abrir la tienda.'},
+      {e:'feliz', t:'El primer año fue mejor de lo esperado: devolvió el préstamo en ocho meses, no en dos años.'},
+      {e:'misterioso', t:'Pero su hermano nunca quiso cobrar los intereses que habían pactado, sin dar ninguna explicación.'},
+      {e:'curioso', t:'Un día encontró, sin buscarla, la razón: años atrás, alguien había hecho lo mismo por su hermano.'},
+      {e:'inspirador', t:'Ahora presta dinero, sin intereses, a quien empieza. La cadena que nadie ve, sigue funcionando igual.'}
+    ]},
+    {title:'La boda', segments:[
+      {e:'feliz', t:'Faltaban dos horas para la boda y el catering aún no había llegado al salón.'},
+      {e:'enfadado', t:'Llamó a la empresa gritando, amenazando con denunciarlos, sin conseguir ninguna solución real.'},
+      {e:'curioso', t:'Su futura suegra, en silencio, sacó el teléfono e hizo tres llamadas que nadie esperaba.'},
+      {e:'misterioso', t:'Una hora después llegó comida de cuatro restaurantes distintos del barrio, sin que nadie supiera cómo.'},
+      {e:'inspirador', t:'Fue la boda más recordada del año. No por el catering perfecto, sino por el que nunca llegó.'}
+    ]},
+    {title:'El diario', segments:[
+      {e:'neutro', t:'Encontró el diario de su abuela mientras ordenaba el trastero de la casa familiar.'},
+      {e:'curioso', t:'La última página, sin terminar, hablaba de un negocio que nunca llegó a montar.'},
+      {e:'triste', t:'Se dio cuenta de que su abuela había tenido miedo, toda su vida, de intentarlo de verdad.'},
+      {e:'inspirador', t:'Decidió terminar esa idea, ochenta años después, con el mismo nombre que su abuela había escrito.'},
+      {e:'feliz', t:'Hoy ese negocio factura más que ningún otro de la familia. Lleva el nombre de su abuela en el logo.'}
+    ]},
+    {title:'La entrevista', segments:[
+      {e:'neutro', t:'Llegó veinte minutos tarde a la entrevista más importante de su vida, por un accidente de tráfico.'},
+      {e:'enfadado', t:'Se culpó todo el trayecto, convencido de que ya no tenía ninguna posibilidad real.'},
+      {e:'curioso', t:'Al entrar, decidió no disculparse ni una sola vez y contar exactamente qué había pasado.'},
+      {e:'misterioso', t:'El entrevistador sonrió de una forma que no supo interpretar durante toda la conversación.'},
+      {e:'inspirador', t:'Le contrataron esa misma tarde: "Buscábamos a alguien que no mintiera cuando algo sale mal".'}
+    ]},
+    {title:'El accidente', segments:[
+      {e:'neutro', t:'El coche de empresa chocó contra un muro la noche antes de la presentación más importante del año.'},
+      {e:'triste', t:'Pensó que todo el trabajo de meses se iba a perder por un golpe de mala suerte.'},
+      {e:'curioso', t:'Sin coche ni portátil, tuvo que presentar de memoria, solo con lo que llevaba en la cabeza.'},
+      {e:'feliz', t:'Fue la mejor presentación que había hecho nunca: sin diapositivas, solo mirando a los ojos.'},
+      {e:'inspirador', t:'Desde entonces presenta siempre así. El accidente le quitó el coche, pero le devolvió la voz.'}
+    ]},
+    {title:'La mudanza', segments:[
+      {e:'neutro', t:'Se mudó de ciudad sin conocer a nadie, solo con dos maletas y un contrato temporal.'},
+      {e:'triste', t:'Las primeras semanas comió sola cada noche, mirando el móvil, esperando mensajes que no llegaban.'},
+      {e:'curioso', t:'Un vecino dejó una nota bajo su puerta: "Los jueves cocino de más, si te apetece bajar".'},
+      {e:'feliz', t:'Ese jueves bajó. Y el siguiente. Hoy ese vecino es el padrino de su primer hijo.'},
+      {e:'inspirador', t:'A veces empezar de cero solo necesita que alguien deje una nota bajo la puerta correcta.'}
+    ]},
+    {title:'El regalo de cumpleaños', segments:[
+      {e:'neutro', t:'Su hija de ocho años ahorró seis meses de paga para comprarle un regalo de cumpleaños.'},
+      {e:'curioso', t:'Al abrirlo, encontró una libreta barata con una sola frase escrita en la primera página.'},
+      {e:'triste', t:'Decía: "Para que apuntes ahí la idea de negocio de la que hablas siempre y nunca escribes".'},
+      {e:'inspirador', t:'Esa noche escribió, por primera vez en años, el plan completo de lo que siempre quiso montar.'},
+      {e:'feliz', t:'Dos años después, esa libreta sigue en su despacho, encima de todo lo demás.'}
+    ]},
+    {title:'La competencia', segments:[
+      {e:'neutro', t:'Un competidor directo abrió una tienda idéntica a la suya, a doscientos metros de distancia.'},
+      {e:'enfadado', t:'Pasó semanas obsesionada con vigilar sus precios, sus redes sociales, cada movimiento que hacían.'},
+      {e:'curioso', t:'Un cliente le dijo algo que la hizo parar: "Vosotros ni siquiera contestáis igual de rápido que antes".'},
+      {e:'misterioso', t:'Dejó de mirar al competidor por completo, de un día para otro, sin decírselo a nadie.'},
+      {e:'inspirador', t:'Un año después, el competidor cerró. Ella nunca supo por qué, y ya no le importaba.'}
+    ]},
+    {title:'El error del banco', segments:[
+      {e:'neutro', t:'El banco ingresó por error cuarenta mil euros de más en la cuenta de la empresa.'},
+      {e:'curioso', t:'Su contable le preguntó, muy serio, qué quería hacer antes de que alguien más lo notara.'},
+      {e:'enfadado', t:'Pensó en todo lo que ese dinero podría arreglar de golpe, todas las facturas pendientes.'},
+      {e:'inspirador', t:'Llamó al banco esa misma tarde y devolvió cada euro, sin que nadie se lo pidiera.'},
+      {e:'feliz', t:'Meses después, ese mismo banco le ofreció una línea de crédito que nadie más quería darle.'}
+    ]},
+    {title:'La reconciliación', segments:[
+      {e:'triste', t:'Llevaban cuatro años sin hablarse, desde que la empresa familiar se dividió entre los dos hermanos.'},
+      {e:'neutro', t:'Se encontraron por casualidad en la boda de un primo, sentados en la misma mesa.'},
+      {e:'enfadado', t:'Las primeras palabras fueron frías, casi de compromiso, recordando viejos reproches sin nombrarlos.'},
+      {e:'curioso', t:'Alguien de la mesa preguntó, sin saberlo, por el negocio que montaron juntos hace veinte años.'},
+      {e:'inspirador', t:'Hablaron hasta las tres de la madrugada. Hoy vuelven a ser socios, y algo más importante: hermanos otra vez.'}
+    ]},
+    {title:'El primer día', segments:[
+      {e:'neutro', t:'Su primer día como jefa de un equipo que antes eran sus compañeros al mismo nivel.'},
+      {e:'curioso', t:'Nadie la miraba igual: unos con respeto nuevo, otros con una distancia que antes no existía.'},
+      {e:'enfadado', t:'Uno de ellos, en la reunión, cuestionó cada decisión que tomó delante de todos los demás.'},
+      {e:'misterioso', t:'Al terminar, le pidió hablar a solas. Nadie supo qué se dijeron en esa sala.'},
+      {e:'inspirador', t:'Hoy ese compañero es su mano derecha. A veces liderar empieza con una conversación incómoda, no evitándola.'}
+    ]},
+    {title:'La subasta', segments:[
+      {e:'neutro', t:'Pujó por el pequeño local que llevaba diez años soñando con convertir en su negocio.'},
+      {e:'enfadado', t:'Otro comprador, con mucho más dinero, empezó a subir la puja sin ninguna intención real de quedárselo.'},
+      {e:'curioso', t:'Se acercó a él en el descanso y le preguntó, directamente, por qué estaba pujando.'},
+      {e:'misterioso', t:'El hombre sonrió: "Solo quería ver hasta dónde estabas dispuesta a llegar por esto".'},
+      {e:'feliz', t:'Se retiró de la puja. Ella se quedó el local, al precio que realmente podía pagar.'}
+    ]},
+    {title:'El mensaje equivocado', segments:[
+      {e:'neutro', t:'Envió por error a todo el equipo un mensaje que era solo para su jefe.'},
+      {e:'enfadado', t:'En el mensaje se quejaba, con detalle, de la falta de reconocimiento en la empresa.'},
+      {e:'misterioso', t:'Nadie respondió durante toda la tarde. El silencio fue mucho peor que cualquier reproche directo.'},
+      {e:'curioso', t:'Al día siguiente, su jefe convocó una reunión de equipo sin dar ninguna pista de qué trataría.'},
+      {e:'inspirador', t:'Anunció cambios reales en cómo reconocían el trabajo de todos. El error, sin querer, arregló algo roto hace años.'}
+    ]},
+    {title:'La jubilación', segments:[
+      {e:'neutro', t:'Después de cuarenta años en la misma fábrica, hoy era su último día de trabajo.'},
+      {e:'triste', t:'Pensó que nadie notaría su ausencia, que sería un día como cualquier otro para los demás.'},
+      {e:'curioso', t:'Al llegar a su puesto encontró a toda la fábrica parada, en completo silencio, esperándolo.'},
+      {e:'feliz', t:'Habían hecho un libro con una página escrita por cada persona con la que trabajó.'},
+      {e:'inspirador', t:'Entendió, por fin, que cuarenta años construyendo en silencio también se notan. Solo hay que dejar espacio para verlo.'}
+    ]},
+    {title:'El taller del abuelo', segments:[
+      {e:'neutro', t:'Heredó el taller mecánico de su abuelo, cerrado desde hacía tres años tras su muerte.'},
+      {e:'triste', t:'Todos le dijeron que lo vendiera, que un taller así ya no tenía ningún futuro real.'},
+      {e:'curioso', t:'Al limpiarlo encontró un cuaderno con clientes de treinta años atrás, todos con una nota personal al lado.'},
+      {e:'inspirador', t:'Decidió reabrirlo con la misma idea: tratar a cada cliente como su abuelo los trataba, uno a uno.'},
+      {e:'feliz', t:'Hoy tiene lista de espera. La gente no vuelve por el motor. Vuelve por cómo la tratan.'}
+    ]},
+    {title:'La última reunión', segments:[
+      {e:'neutro', t:'Era la última reunión antes de cerrar definitivamente la empresa que fundó hace quince años.'},
+      {e:'triste', t:'Miró a cada uno de sus doce empleados, sabiendo que mañana ya no tendrían trabajo.'},
+      {e:'enfadado', t:'Se culpó en voz alta, delante de todos, por decisiones que tomó demasiado tarde.'},
+      {e:'curioso', t:'Uno de sus empleados más jóvenes levantó la mano con una propuesta que nadie esperaba escuchar.'},
+      {e:'inspirador', t:'Reestructuraron la empresa esa misma noche, más pequeña pero real. Hoy sigue abierta, con la mitad del equipo.'}
+    ]},
+    {title:'El anillo', segments:[
+      {e:'neutro', t:'Perdió el anillo de su boda limpiando el almacén del pequeño negocio familiar.'},
+      {e:'enfadado', t:'Pasó dos días enteros buscándolo, culpando a todo el mundo, incluso a sí mismo.'},
+      {e:'misterioso', t:'Un cliente habitual, sin decir nada, empezó a ayudarle a revisar caja por caja.'},
+      {e:'curioso', t:'Ese cliente le contó, mientras buscaban, que él también había perdido el suyo hace años y nunca lo encontró.'},
+      {e:'feliz', t:'Lo encontraron dentro de una caja de tornillos. Desde entonces, ese cliente es su mejor amigo.'}
+    ]},
+    {title:'La cicatriz', segments:[
+      {e:'neutro', t:'En cada entrevista de trabajo le preguntaban por la cicatriz visible en su brazo.'},
+      {e:'triste', t:'Durante años inventó excusas, avergonzado del accidente real que la había dejado ahí.'},
+      {e:'curioso', t:'En una entrevista decidió, por primera vez, contar la verdad completa, sin adornarla.'},
+      {e:'misterioso', t:'El entrevistador se quedó en silencio unos segundos, mirando la mesa, antes de responder.'},
+      {e:'inspirador', t:'"A esta empresa le sobran perfectos y le faltan honestos. Empiezas el lunes". Nunca volvió a esconder la cicatriz.'}
+    ]},
+    {title:'El comienzo', segments:[
+      {e:'neutro', t:'A los cincuenta y dos años decidió estudiar lo que nunca pudo estudiar de joven.'},
+      {e:'enfadado', t:'En la primera clase, un compañero de veinte años le preguntó, con burla, qué hacía ahí.'},
+      {e:'triste', t:'Esa noche estuvo a punto de dejarlo, convencido de que llegaba demasiado tarde para todo.'},
+      {e:'curioso', t:'Su hija, sin saberlo, le dejó una nota en la mochila antes de que se fuera a clase.'},
+      {e:'inspirador', t:'Decía: "El único momento tarde para empezar es el que ya dejaste pasar". Terminó la carrera con matrícula de honor.'}
+    ]}
+  ],
+  paceTexts:[
+    {title:'El anuncio', body:'Hoy... no vengo a venderte nada. (MÁS DESPACIO) Vengo a contarte **una verdad** que casi nadie dice en voz alta. Llevas años trabajando duro... pero trabajar duro no es lo mismo que avanzar. (MÁS RÁPIDO) La diferencia está en las decisiones pequeñas, las que tomas cada mañana, cada reunión, cada "sí" y cada "no". Y esas decisiones... **se entrenan**. Como un músculo. Como cualquier otra cosa que de verdad te importa.'},
+    {title:'La despedida', body:'Llevo quince años en esta empresa. (MÁS DESPACIO) Quince años... de errores, de aciertos, de gente que confió en mí sin motivo aparente. Hoy me voy. No porque algo saliera mal. **Al contrario**. Me voy porque por fin sé lo que quiero hacer con el tiempo que me queda. (MÁS RÁPIDO) Y eso, señoras y señores, no tiene precio. Gracias por todo. De verdad.'},
+    {title:'El discurso de ventas', body:'Imagina despertar mañana... y que el problema que llevas dos años arrastrando, simplemente, **ya no existe**. Así de fácil. (MÁS DESPACIO) No es magia. Es un sistema. Uno que ya probaron trescientas empresas antes que tú. (MÁS RÁPIDO) La pregunta no es si funciona. La pregunta es cuánto más vas a esperar para empezar.'},
+    {title:'La disculpa pública', body:'Cometí un error. (MÁS DESPACIO) Uno grande. Y en vez de esconderlo, prefiero estar aquí, delante de vosotros, y decirlo con todas las letras: **me equivoqué**. No busco excusas. Busco que sepáis que lo he entendido. (MÁS RÁPIDO) Y que a partir de hoy, las cosas van a cambiar. De verdad. Empezando ahora mismo.'},
+    {title:'El brindis de boda', body:'Conocí a estos dos... por separado, hace más años de los que quiero admitir. (MÁS DESPACIO) Y nunca, ni una sola vez, imaginé que acabarían el uno frente al otro, hoy, aquí. Hay personas que se buscan toda la vida sin saberlo. (MÁS RÁPIDO) Por estos dos. Por lo que ya construyeron... y por **todo lo que les queda**.'},
+    {title:'El lanzamiento del producto', body:'Llevamos dos años en silencio. (MÁS DESPACIO) Dos años escuchando lo que de verdad necesitabais, no lo que era fácil construir. Hoy... por fin... podemos enseñároslo. (MÁS RÁPIDO) No es una actualización más. Es **el producto que debimos lanzar desde el principio**. Y ya está aquí.'},
+    {title:'La charla motivacional', body:'Nadie va a venir a salvarte. (MÁS DESPACIO) Ni tu jefe, ni el mercado, ni la suerte. **Nadie**. Y en el momento en que lo aceptas de verdad... algo cambia. (MÁS RÁPIDO) Dejas de esperar el momento perfecto y empiezas con lo que tienes hoy, ahora, en esta sala.'},
+    {title:'El discurso de fin de año', body:'Este año... no fue el que planeamos. (MÁS DESPACIO) Hubo meses duros. Hubo dudas, hubo noches sin dormir preguntándonos si merecía la pena seguir. (MÁS RÁPIDO) Pero seguimos aquí. **Enteros**. Y eso, en un año así, ya es una victoria que merece brindarse.'},
+    {title:'La llamada al equipo', body:'Quiero que me miréis un segundo. (MÁS DESPACIO) Sé que llevamos semanas duras... y sé que algunos ya dudáis de si esto va a salir bien. (MÁS RÁPIDO) Yo también dudé. Pero hemos llegado hasta aquí sin rendirnos ni una sola vez, y **eso no lo va a parar un mal trimestre**.'},
+    {title:'La negociación', body:'Antes de que digas nada... quiero ser claro con algo. (MÁS DESPACIO) No estoy aquí para ganar yo y que pierdas tú. Eso no dura. (MÁS RÁPIDO) Quiero un acuerdo que en un año todavía nos parezca **justo a los dos**. Empecemos por ahí, no por el precio.'},
+    {title:'El pitch de ascensor', body:'Tienes treinta segundos, así que voy directo. (MÁS RÁPIDO) Ayudamos a empresas a recuperar el tiempo que pierden en tareas repetitivas... con IA que de verdad usan, no que solo prueban una vez. (MÁS DESPACIO) En seis meses, nuestros clientes ahorran de media diez horas por semana. **Esa es la conversación que quiero tener contigo**.'},
+    {title:'El discurso de graduación', body:'Hace cuatro años, la mayoría de vosotros no se conocía. (MÁS DESPACIO) Hoy salís de aquí con algo que no estaba en ningún programa: la certeza de que **podéis con más de lo que pensabais**. (MÁS RÁPIDO) El mundo ahí fuera no os va a esperar. Así que no le deis motivos para dudar de vosotros.'},
+    {title:'La crisis de la empresa', body:'Sé que ha llegado la noticia antes que yo. (MÁS DESPACIO) Y sé que da miedo. A mí también me lo da. Pero prefiero decíroslo yo, de frente, a que os enteréis por rumores. (MÁS RÁPIDO) Esto es lo que sabemos hoy... y esto es **exactamente** lo que vamos a hacer a partir de mañana.'},
+    {title:'El agradecimiento', body:'No estaría aquí arriba sin al menos veinte personas en esta sala. (MÁS DESPACIO) Gente que confió en mí cuando yo mismo no confiaba. Que me sostuvo cuando quise dejarlo. (MÁS RÁPIDO) Así que esto... **no es mío**. Es de todos los que me sostuvieron sin que yo se lo pidiera.'},
+    {title:'La advertencia', body:'Voy a deciros algo que no os va a gustar oír. (MÁS DESPACIO) Si seguimos así... en un año no va a quedar empresa que salvar. No es una amenaza. Es un cálculo. (MÁS RÁPIDO) Así que hoy, ahora, tenemos que decidir qué estamos dispuestos a cambiar. **Hoy, no el mes que viene**.'},
+    {title:'El discurso de bienvenida', body:'Bienvenido a un lugar donde nadie te va a decir "esto siempre se hizo así". (MÁS DESPACIO) Aquí valoramos más una buena pregunta que una respuesta segura. (MÁS RÁPIDO) Vas a equivocarte, y **está bien**. Lo que no está bien es no intentarlo por miedo a equivocarte delante de nosotros.'},
+    {title:'La reconciliación pública', body:'Llevamos meses sin hablarnos como se merece esta empresa. (MÁS DESPACIO) Y una parte de esto es culpa mía, lo reconozco aquí, delante de todos. (MÁS RÁPIDO) Pero hoy quiero proponer algo distinto: empezar de cero, con las cartas sobre la mesa, **sin rencores guardados para después**.'},
+    {title:'La despedida de un compañero', body:'Diez años trabajando codo con codo... no se resumen en un discurso de tres minutos. (MÁS DESPACIO) Pero voy a intentarlo. Este hombre me enseñó más de lo que cualquier curso me enseñó nunca. (MÁS RÁPIDO) Que tengas la suerte, en tu próximo reto, de encontrar un equipo que **te eche tanto de menos** como nosotros hoy.'},
+    {title:'El cierre de campaña', body:'Nos quedan tres días. (MÁS DESPACIO) Tres días para decidir si de verdad creemos en lo que llevamos meses defendiendo, o si lo dejamos aquí, a medias. (MÁS RÁPIDO) Yo no he venido hasta aquí para quedarme a medias. Y **vosotros tampoco**.'},
+    {title:'El discurso improvisado', body:'No tenía preparado nada de esto, así que perdonad si no sale perfecto. (MÁS DESPACIO) Pero cuando me han pedido que suba aquí, he pensado en una sola cosa: lo que casi nunca decimos en voz alta. (MÁS RÁPIDO) Que **esto**, lo que hemos construido, no era nada obvio que fuera a funcionar. Y funcionó.'}
+  ],
+  wordSets:[
+    ['Montaña','Reloj','Padre','Avión','Error','Millón'],
+    ['Espejo','Deuda','Playa','Secreto','Llave','Silencio'],
+    ['Fuego','Contrato','Hermana','Tormenta','Mentira','Regalo'],
+    ['Ascensor','Herencia','Sombra','Café','Despido','Promesa'],
+    ['Cicatriz','Barco','Carta','Ruido','Vecino','Suerte'],
+    ['Frontera','Abuelo','Deadline','Espejismo','Botella','Verdad'],
+    ['Túnel','Factura','Risa','Ceniza','Mapa','Segundo'],
+    ['Balcón','Rumor','Semilla','Cuenta atrás','Foto','Perdón'],
+    ['Andén','Cicatriz','Whisky','Testamento','Eco','Comienzo'],
+    ['Maleta','Alarma','Padrino','Deuda','Horizonte','Silbido'],
+    ['Ventana','Socio','Lluvia','Cheque','Recuerdo','Salto'],
+    ['Estación','Duda','Anillo','Incendio','Vecina','Después'],
+    ['Terraza','Rescate','Cuaderno','Alquiler','Prisa','Origen'],
+    ['Semáforo','Confesión','Bolsillo','Aviso','Cosecha','Regreso'],
+    ['Pasillo','Cifra','Abrigo','Rumor','Vértigo','Final'],
+    ['Cuenta','Espera','Retrato','Grieta','Refugio','Empezar'],
+    ['Vagón','Testigo','Moneda','Latido','Distancia','Amanecer'],
+    ['Buzón','Sospecha','Cordón','Cifra','Umbral','Otra vez'],
+    ['Sirena','Legado','Puente','Vacío','Palabra','Después'],
+    ['Reloj de arena','Culpa','Frasco','Riesgo','Tejado','Segunda vez'],
+    ['Cuerda','Herida','Mercado','Espera','Sótano','Salida'],
+    ['Tren','Diagnóstico','Papel','Silbato','Deuda vieja','Renacer'],
+    ['Faro','Cifra roja','Vecindad','Cicatriz nueva','Espejo roto','Recomenzar'],
+    ['Camión','Notaría','Balcón vacío','Cuenta pendiente','Grito','Calma'],
+    ['Aeropuerto','Testamento','Reloj parado','Vecino ausente','Duda final','Vuelo'],
+    ['Cerradura','Confidencia','Recibo','Insomnio','Frontera cerrada','Amanecer nuevo'],
+    ['Andamio','Rescate tardío','Silencio largo','Firma','Espera eterna','Reencuentro'],
+    ['Cajón','Nota final','Deuda antigua','Puerta abierta','Miedo viejo','Salto al vacío'],
+    ['Semilla','Cosecha tardía','Palabra dada','Espera corta','Cicatriz visible','Vuelta a empezar'],
+    ['Kilómetro','Segunda oportunidad','Cuenta atrás final','Café frío','Vecino nuevo','Comienzo real']
+  ],
+  sellChallenges:[
+    'Véndeme una botella de agua.','Convénceme para leer libros.','Véndeme una bicicleta.',
+    'Vende una consultoría de IA.','Véndeme un paraguas en un día soleado.',
+    'Convénceme de cambiar de banco.','Véndeme el móvil que llevas en el bolsillo, sin decir la marca.',
+    'Vende una suscripción mensual a esta app.','Convénceme de hacer ejercicio hoy mismo.',
+    'Véndeme un curso online de 500€.','Convénceme de mudarme de ciudad.',
+    'Véndeme una silla de oficina.','Véndeme un seguro de vida a alguien de 25 años.',
+    'Convénceme de dejar las redes sociales un mes.','Véndeme una plancha del pelo a un hombre calvo.',
+    'Vende una membresía de gimnasio a alguien que odia el deporte.',
+    'Convénceme de invertir en bolsa con solo 100€.','Véndeme un libro que no has leído.',
+    'Véndeme unas zapatillas de running a alguien con dolor de rodilla.',
+    'Convénceme de aprender a programar a los 40 años.',
+    'Véndeme una freidora de aire a alguien que odia cocinar.',
+    'Vende un CRM a un autónomo que usa una libreta.',
+    'Convénceme de contratar un seguro de hogar hoy mismo.',
+    'Véndeme un colchón por teléfono, sin que lo pueda tocar.',
+    'Convénceme de cancelar mis vacaciones para trabajar en un proyecto.',
+    'Véndeme una segunda hipoteca.','Vende una app de meditación a alguien "que no tiene tiempo".',
+    'Convénceme de donar el 5% de mi sueldo cada mes.',
+    'Véndeme un traje a alguien que solo lleva chándal.',
+    'Convénceme de aprender inglés después de intentarlo diez veces.',
+    'Véndeme un coche eléctrico a alguien que ama el ruido del motor.',
+    'Vende una auditoría fiscal a un negocio que "va bien, no necesita nada".',
+    'Convénceme de cambiar de trabajo aunque cobre bien donde estoy.',
+    'Véndeme un cuadro que has pintado tú mismo por 3.000€.',
+    'Convénceme de que dos horas de reunión valían la pena.',
+    'Véndeme un servicio de limpieza a alguien orgulloso de limpiar su casa.',
+    'Convénceme de renovar el contrato con tu agencia, no con la competencia.',
+    'Véndeme un dron a alguien con miedo a que se estrelle.',
+    'Vende una tarjeta de crédito premium a alguien que solo paga en efectivo.',
+    'Convénceme de aceptar cobrar menos por este proyecto.',
+    'Véndeme el peor producto de tu catálogo como si fuera el mejor.'
+  ],
+  improvTopics:[
+    '¿Qué es el éxito?','¿Por qué fracasan las empresas?','¿La IA destruirá empleos?',
+    '¿Es bueno madrugar?','¿Qué aprendiste esta semana?','¿El dinero da la felicidad?',
+    '¿Deberíamos trabajar 4 días a la semana?','¿Es mejor pedir perdón o pedir permiso?',
+    '¿La suerte existe en los negocios?','¿Qué harías con un año sabático?',
+    '¿Es más importante el talento o la disciplina?','¿Cómo será tu sector en 10 años?',
+    '¿Merece la pena estudiar una carrera hoy en día?','¿Es mejor fracasar rápido o planear despacio?',
+    '¿Deberíamos hablar de dinero abiertamente con amigos?','¿La motivación es real o solo un mito?',
+    '¿Qué es más difícil, empezar o mantener?','¿El networking es honesto o es puro postureo?',
+    '¿Deberías tener un socio o emprender solo?','¿Es sano compararte con la competencia?',
+    '¿Qué opinas de trabajar los findes por un proyecto propio?','¿La educación financiera debería enseñarse en el colegio?',
+    '¿Es mejor un jefe exigente o uno permisivo?','¿El teletrabajo mata la creatividad o la libera?',
+    '¿Qué le dirías a tu yo de hace diez años sobre el dinero?','¿Vale la pena arriesgarlo todo por una idea?',
+    '¿Es la procrastinación siempre algo negativo?','¿Deberíamos jubilarnos antes o trabajar toda la vida en lo que amamos?',
+    '¿Qué es más valioso hoy, el tiempo o el dinero?','¿Cómo se reconoce a un buen líder en cinco minutos?',
+    '¿Es la ambición una virtud o un defecto?','¿Deberías decir siempre la verdad a un cliente, aunque duela?',
+    '¿Qué opinas de mentir en una entrevista de trabajo para conseguirlo?','¿El fracaso público debería darnos vergüenza?',
+    '¿Es más importante gustar o ser respetado?','¿Deberías montar tu negocio con tus ahorros o con deuda?',
+    '¿Qué opinas de trabajar gratis al principio para ganar experiencia?','¿Es la competencia buena o mala para un sector?',
+    '¿Cómo saber si es momento de cerrar un negocio?','¿Qué has dejado de hacer por miedo, y te arrepientes?'
+  ],
+  communicators:[
+    {name:'Steve Jobs', note:'Frases cortas. Pausas largas. Repetición de una sola idea central.',
+     speech:'Hay productos... y hay productos que cambian cómo vivimos. (pausa) Nosotros no hacemos el primero. (pausa larga) Durante los últimos meses, mi equipo ha trabajado en algo... simple. Tan simple que cualquiera lo entiende en tres segundos. (pausa) Eso, señoras y señores, **es** diseño. No lo que se ve. Cómo funciona.'},
+    {name:'Alex Hormozi', note:'Directo, cifras concretas, ritmo rápido, cero rodeos.',
+     speech:'Mira, esto es muy simple. Si tu oferta no es tan buena que la gente se sienta estúpida diciendo que no, tu problema no es de marketing, es de oferta. Yo cobré 500, luego 5000, luego 50000 por lo mismo. ¿Qué cambió? El valor percibido, no el producto. Deja de bajar precios y sube el valor hasta que dé vergüenza decir que no.'},
+    {name:'Simon Sinek', note:'Estructura "por qué → cómo → qué", tono cálido, historias pequeñas.',
+     speech:'La gente no compra lo que haces. Compra por qué lo haces. (pausa) Piensa en la última decisión importante que tomaste... no fue por una lista de características. Fue porque algo, en esa historia, **te hizo sentido**. Empieza siempre por el porqué. El qué viene solo, después.'},
+    {name:'Naval Ravikant', note:'Aforismos cortos, tono calmado, casi filosófico, sin prisa.',
+     speech:'La riqueza se construye durmiendo, no trabajando. Busca apuestas de responsabilidad específica, con capital y trabajo, no solo trabajo. La codicia de dinero a corto plazo destruye la riqueza a largo plazo. Aprende a vender, aprende a construir. Si puedes hacer ambas cosas, serás imparable.'},
+    {name:'Jordan Peterson', note:'Tono pausado, moral, apela a la responsabilidad individual.',
+     speech:'Antes de cambiar el mundo... ordena tu propia habitación. (pausa larga) Es fácil culpar al sistema. Es mucho más difícil, y mucho más útil, preguntarte qué parte de tu vida está hoy en desorden y qué harías tú, hoy, para arreglarla.'},
+    {name:'Gary Vaynerchuk', note:'Energía altísima, tono coloquial, insiste en la acción inmediata sobre la teoría.',
+     speech:'Para de leer artículos sobre cómo hacerlo y ve a hacerlo. En serio. Todo el mundo quiere la estrategia secreta y la estrategia secreta es: publica más, contesta más mensajes, aguanta más años que los demás. No hay atajo. Hay paciencia disfrazada de trabajo diario. Eso es todo.'},
+    {name:'Brené Brown', note:'Tono cercano, vulnerable, pausas reflexivas, apela a la emoción compartida.',
+     speech:'Durante años pensé que mostrar dudas era mostrar debilidad. (pausa) Y era exactamente al revés. Las personas no conectan con tu currículum. Conectan con el momento en que admites que también tuviste miedo. La valentía no es no tener miedo... es hablar con él sentado a tu lado.'},
+    {name:'Winston Churchill', note:'Solemne, frases cortas y contundentes, repetición para machacar la idea central.',
+     speech:'No vamos a rendirnos. No hoy, no mañana, no cuando las cosas se pongan difíciles. (pausa larga) Lucharemos con lo que tengamos, aunque sea poco, aunque parezca insuficiente. Porque la historia no recuerda a quienes tuvieron más recursos. Recuerda a quienes **no se rindieron**.'},
+    {name:'Oprah Winfrey', note:'Tono íntimo, casi de confidencia, preguntas retóricas directas al público.',
+     speech:'¿Cuántas veces esperaste permiso para empezar algo que ya sabías que querías hacer? (pausa) Yo esperé años. Años esperando que alguien me dijera que estaba lista. Nadie lo hizo. Y un día entendí que ese permiso... nunca iba a venir de fuera. Tenía que dármelo yo.'},
+    {name:'Elon Musk', note:'Tono técnico, algo dubitativo al hablar pero con convicción absoluta en la idea de fondo.',
+     speech:'La gente piensa que esto es imposible. Y, honestamente, probablemente tengan razón en el noventa por ciento de los casos. Pero si no lo intentas, la probabilidad es cero, garantizada. Preferimos intentar algo con un diez por ciento de posibilidades que no intentar nada con un cien por cien seguro.'},
+    {name:'Richard Branson', note:'Cercano, informal, mezcla anécdota personal con principio de negocio.',
+     speech:'La primera vez que negocié un préstamo tenía dieciséis años y ni corbata tenía. (pausa) Nadie confiaba en mí, y con razón, no tenía nada que demostrar. Pero dije que sí antes de saber cómo lo haría. Esa ha sido, sin exagerar, la fórmula de toda mi carrera: decir que sí primero, y aprender rápido después.'},
+    {name:'Michelle Obama', note:'Cálida pero firme, ritmo pausado, énfasis en valores compartidos.',
+     speech:'Cuando ellos van bajo, nosotros vamos alto. (pausa) No porque sea más fácil. Es mucho más difícil. Pero cada vez que respondemos con dignidad a algo injusto, le enseñamos a alguien que nos mira que **hay otra forma de hacer las cosas**.'},
+    {name:'Tony Robbins', note:'Volumen alto, ritmo acelerado, preguntas directas que exigen respuesta inmediata del público.',
+     speech:'¿Qué es lo que de verdad te está deteniendo? ¡Dilo en voz alta! Porque el noventa por ciento de las veces no es el dinero, no es el momento, no es la economía. Es una historia que te has contado tantas veces que ya suena a verdad. Cambia la historia... y cambia el resultado.'},
+    {name:'Malcolm Gladwell', note:'Tono narrativo, casi de periodista, construye la idea a través de un dato o anécdota curiosa.',
+     speech:'En 1971, un investigador quiso saber por qué unos músicos triunfaban y otros, igual de buenos, no. (pausa) La diferencia no fue el talento. Fueron las horas exactas de práctica deliberada antes de cumplir veinte años. Lo que llamamos "talento natural"... casi siempre es simplemente tiempo invertido que no vimos.'},
+    {name:'Serena Williams', note:'Tono competitivo, directo, apela a la disciplina y a no rendirse tras el fracaso.',
+     speech:'Perdí partidos que debí ganar. Muchos. (pausa) Y cada vez que perdía, tenía dos opciones: quedarme con la derrota, o volver al día siguiente a entrenar como si nada hubiera pasado. Elegí la segunda, cientos de veces. Eso, más que cualquier saque, es lo que me hizo campeona.'}
+  ],
+  // Todas en la misma dirección: 10 = lo hiciste bien. Nada de escalas invertidas,
+  // porque la media y los "3 focos" se calculan sobre estos números.
+  feedbackDims:['Claridad','Ritmo adecuado','Vocalización','Energía','Mirada a cámara','Sonrisa','Hablar sin muletillas','Uso de pausas','Storytelling','Persuasión','Confianza','Variación de tono','Expresividad'],
+  meetingLines:[
+    'El cliente dice: "Esto es muy caro comparado con la competencia."',
+    'El cliente dice: "Necesito pensarlo, hablamos la semana que viene."',
+    'El cliente dice: "Ya lo intentamos antes y no funcionó."',
+    'El cliente dice: "No tengo tiempo para implementar esto ahora."',
+    'El cliente dice: "¿Y quién me garantiza que esto va a funcionar?"',
+    'El cliente dice: "Mi socio piensa que es una mala idea."',
+    'El cliente dice: "¿Por qué debería confiar en vosotros y no en otra agencia?"',
+    'El cliente dice: "Esto lo puedo hacer yo mismo con IA gratis."',
+    'El cliente dice: "Vuestro competidor me ofrece lo mismo más barato."',
+    'El cliente dice: "No entiendo para qué necesito esto realmente."',
+    'El cliente dice: "La última vez que contraté algo así, me estafaron."',
+    'El cliente dice: "¿Y si no funciona, me devolvéis el dinero?"',
+    'El cliente dice: "Prefiero esperar a que salga la próxima versión."',
+    'El cliente dice: "Esto tendría que habérmelo dicho hace un mes."',
+    'El cliente dice: "No tengo presupuesto para esto este trimestre."',
+    'El cliente dice: "¿Por qué el precio subió desde la última propuesta?"',
+    'El cliente dice: "Mi equipo no tiene tiempo para aprender algo nuevo."',
+    'El cliente dice: "Nadie en mi sector usa esto todavía."',
+    'El cliente dice: "Necesito que me lo apruebe primero dirección."',
+    'El cliente dice: "¿Qué pasa si me arrepiento a mitad de contrato?"',
+    'El cliente dice: "Prefiero seguir haciendo lo que ya sé que funciona."',
+    'El cliente dice: "Vuestra empresa es muy pequeña para un proyecto así."',
+    'El cliente dice: "No me fío de una propuesta sin referencias."',
+    'El cliente dice: "Esto suena demasiado bueno para ser verdad."',
+    'El cliente dice: "¿Y si cambiáis de precio dentro de seis meses?"'
+  ],
+  interviewQuestions:[
+    '¿Por qué deberíamos contratarte a ti y no a otra persona con más experiencia?',
+    'Cuéntame de una vez que fallaste en público. ¿Qué hiciste después?',
+    'Si tu jefe anterior estuviera aquí, ¿qué diría que es lo peor de trabajar contigo?',
+    '¿Qué harías en tu primer día si descubres que el proyecto está mal planteado?',
+    'Dame un número: del 1 al 10, ¿cómo de bueno eres en esto? Justifica el número.',
+    '¿Qué pregunta esperabas que te hiciera y no te he hecho?',
+    'Véndeme por qué debería confiar en ti con un cliente difícil mañana mismo.',
+    '¿Qué harías si un compañero se lleva el mérito de tu trabajo delante del jefe?',
+    'Descríbeme tu peor día laboral sin quejarte, solo contando los hechos.',
+    '¿Por qué dejaste tu último trabajo, de verdad, sin la versión oficial?',
+    'Si te digo que el puesto paga la mitad de lo que esperabas, ¿qué respondes ahora mismo?',
+    '¿Qué es lo primero que cambiarías de esta empresa si entraras mañana?',
+    'Convénceme de que no te vas a ir en seis meses a la competencia.',
+    '¿Cómo reaccionas cuando alguien te da una crítica que consideras injusta?',
+    '¿Qué has hecho esta semana que demuestre lo que dices que sabes hacer?',
+    'Si tuvieras que despedir a alguien de tu equipo actual, ¿a quién y por qué?',
+    '¿Qué opinas de trabajar bajo presión constante? Sin la respuesta de manual.',
+    '¿Cuál es tu mayor debilidad, la real, no la que suena bien en una entrevista?'
+  ],
+  debateTopics:[
+    {topic:'La IA va a sustituir la mayoría de trabajos creativos.', rebuttals:['Pero un humano seguirá decidiendo qué se publica y por qué.','La creatividad no es solo producir, es elegir con criterio.','¿Y quién asume la responsabilidad si la IA se equivoca?']},
+    {topic:'El teletrabajo es mejor que la oficina.', rebuttals:['¿Y la cultura de equipo, cómo se construye a distancia?','Muchos juniors aprenden mirando a los seniors en persona.','¿No se pierde la creatividad espontánea de un pasillo?']},
+    {topic:'Es mejor ser generalista que especialista.', rebuttals:['Pero los especialistas cobran más por escasez.','¿No es el generalista solo alguien que no decidió a tiempo?','Las empresas grandes contratan especialistas, no generalistas.']},
+    {topic:'El dinero es el mejor motivador para un equipo.', rebuttals:['Los estudios muestran que el reconocimiento pesa tanto como el salario.','¿Y qué pasa cuando ya no puedes subir más el sueldo?','Un equipo solo por dinero se va en cuanto pagan más en otro sitio.']},
+    {topic:'Todo emprendedor debería arriesgarlo todo desde el primer día.', rebuttals:['¿Y las familias que dependen de ese ingreso mientras tanto?','Muchos negocios exitosos empezaron como proyecto secundario.','Arriesgarlo todo no es valentía, a veces es solo falta de plan.']},
+    {topic:'Las reuniones presenciales son una pérdida de tiempo.', rebuttals:['Algunas decisiones importantes solo se toman bien cara a cara.','¿Cómo generas confianza real solo con videollamadas?','Muchos malentendidos se evitan hablando en persona, no por chat.']},
+    {topic:'Un buen producto se vende solo, sin necesidad de marketing.', rebuttals:['Entonces, ¿por qué tantos productos buenos nunca despegan?','El mejor producto del mercado no siempre es el más conocido.','Sin visibilidad, nadie sabe que el producto existe para comprarlo.']},
+    {topic:'Los estudios universitarios ya no garantizan un buen trabajo.', rebuttals:['Pero siguen abriendo puertas que la autodidactia no abre igual.','¿Y las profesiones reguladas que exigen título obligatorio?','Los datos muestran que el paro es menor entre universitarios.']},
+    {topic:'Cobrar por hora es mejor que cobrar por proyecto.', rebuttals:['¿Y si eres muy eficiente y tardas menos de lo esperado?','Cobrar por hora premia la lentitud, no la habilidad.','El cliente prefiere saber el coste total desde el principio.']},
+    {topic:'Las redes sociales son imprescindibles para cualquier negocio hoy.', rebuttals:['Hay negocios B2B que nunca han necesitado redes para crecer.','El boca a boca sigue siendo la fuente número uno de clientes.','¿Y si el algoritmo cambia y pierdes todo tu alcance de golpe?']},
+    {topic:'Un jefe debe ser amigo de su equipo.', rebuttals:['¿Cómo despides a un amigo si hace falta?','La cercanía a veces impide tomar decisiones difíciles a tiempo.','Respeto y amistad no siempre son compatibles en jerarquía.']},
+    {topic:'El fracaso es siempre la mejor forma de aprender.', rebuttals:['Algunos fracasos solo generan miedo, no aprendizaje real.','Aprender de otros evita repetir errores que ya son evitables.','No todos los fracasos se pueden permitir económicamente.']},
+    {topic:'Cualquiera puede aprender a vender si se lo propone.', rebuttals:['Algunas personas tienen ventaja natural en empatía o carisma.','¿Por qué entonces no todos los vendedores rinden igual con el mismo entrenamiento?','Aprender la técnica no siempre supera el miedo al rechazo.']},
+    {topic:'Las empresas pequeñas innovan más que las grandes.', rebuttals:['Las grandes tienen presupuestos de I+D que las pequeñas no pueden igualar.','Muchas innovaciones pequeñas mueren por falta de capital para escalar.','Las grandes compran startups innovadoras en vez de competir con ellas.']},
+    {topic:'Trabajar muchas horas es la única forma de triunfar rápido.', rebuttals:['Hay negocios muy rentables construidos con jornadas razonables.','El agotamiento reduce la calidad de las decisiones importantes.','Trabajar más horas no siempre significa trabajar en lo correcto.']}
+  ]
+};
+
+function loadState(){
+  try{ return JSON.parse(localStorage.getItem(LS_KEY)) || defaultState(); }
+  catch(e){ return defaultState(); }
+}
+function defaultState(){
+  return { xp:0, streak:0, lastDone:null, totalSeconds:0, history:[], weakPoints:{} };
+}
+function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(S)); }
+let S = loadState();
+
+function levelFromXP(xp){ return Math.floor(xp/150)+1; }
+function xpIntoLevel(xp){ return xp % 150; }
+function rankFromLevel(lvl){
+  if(lvl>=100) return 'S'; if(lvl>=70) return 'A'; if(lvl>=45) return 'B';
+  if(lvl>=25) return 'C'; if(lvl>=10) return 'D'; return 'E';
+}
+function fmtTime(sec){
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60);
+  if(h>0) return h+'h '+m+'m';
+  return m+'m';
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function isYesterday(iso){
+  const d=new Date(iso+'T00:00:00'); const y=new Date(); y.setDate(y.getDate()-1);
+  return d.toDateString()===y.toDateString();
+}
+const EPOCH = Date.UTC(2026,0,5); // lunes
+function weekIndex(){
+  const d = new Date();
+  const days = Math.round((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()) - EPOCH)/86400000);
+  return Math.floor(days/7);
+}
+// Rotación secuencial: cada tipo de día sale 1×/semana, así recorre
+// el banco entero antes de repetir nada.
+function seedIndex(salt, len){
+  let off=0; for(let i=0;i<salt.length;i++){ off=(off*31+salt.charCodeAt(i))>>>0; }
+  return ((weekIndex() + off) % len + len) % len;
+}
+function todayDayType(){ return DAY_TYPE[new Date().getDay()]; }
+function doneToday(){
+  return S.history.some(h=>h.date===todayISO());
+}
+function completeSession(dayType, seconds, extra){
+  const already = doneToday();
+  const lvlBefore = levelFromXP(S.xp);
+  const rankBefore = rankFromLevel(lvlBefore);
+  S.totalSeconds += seconds;
+  if(!already){
+    if(S.lastDone && isYesterday(S.lastDone)) S.streak += 1;
+    else if(S.lastDone !== todayISO()) S.streak = 1;
+    S.lastDone = todayISO();
+    S.xp += 50 + Math.min(S.streak*2, 40);
+  }
+  S.history.push(Object.assign({date:todayISO(), day:new Date().getDay(), type:dayType, seconds:seconds}, extra||{}));
+  saveState();
+
+  const lvlAfter = levelFromXP(S.xp);
+  const rankAfter = rankFromLevel(lvlAfter);
+  if(rankAfter !== rankBefore){
+    sfxRankUp(); vibrate([40,30,40,30,80]); flashScreen(true);
+    showToast('RANGO ' + rankAfter, 'Has subido de rango');
+  } else if(lvlAfter > lvlBefore){
+    sfxLevelUp(); vibrate([30,20,50]); flashScreen(true);
+    showToast('NIVEL ' + lvlAfter, 'Has subido de nivel');
+  } else {
+    sfxComplete(); vibrate(25); flashScreen(false);
+  }
+}
+function showToast(title, sub){
+  const el = document.createElement('div');
+  el.className = 'levelup-toast';
+  el.innerHTML = `<div class="mono" style="font-size:1.7rem;font-weight:900;color:var(--gold)">${title}</div>
+                  <div class="dim">${sub}</div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2400);
+}
+function registerWeakPoints(dims){
+  dims.forEach(d=>{ S.weakPoints[d]=(S.weakPoints[d]||0)+1; });
+  saveState();
+}
+
+let ROUTE = {name:'home'};
+function go(name, params){ ROUTE = Object.assign({name:name}, params||{}); render(); window.scrollTo(0,0); }
+
+function el(html){ const d=document.createElement('div'); d.innerHTML=html; return d.firstElementChild; }
+
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = TEMPLATES[ROUTE.name](ROUTE);
+  bindRouteEvents();
+}
+
+function bindRouteEvents(){
+  if(ROUTE.name==='train') bindTrainEvents();
+  if(ROUTE.name==='extra') bindExtraEvents();
+}
+
+const TEMPLATES = {
+  home(){
+    const lvl=levelFromXP(S.xp), rank=rankFromLevel(lvl), pct=Math.round(xpIntoLevel(S.xp)/150*100);
+    const dayType = todayDayType();
+    const label = DAY_LABEL[dayType];
+    const already = doneToday();
+    let week='';
+    for(let i=0;i<7;i++){
+      const isToday = i===new Date().getDay();
+      const dateForCell = new Date(); dateForCell.setDate(dateForCell.getDate() - (dateForCell.getDay()-i));
+      const iso = dateForCell.toISOString().slice(0,10);
+      const done = S.history.some(h=>h.date===iso);
+      week += `<div class="d ${isToday?'today':''} ${done?'done':''}">${DAY_NAMES[i].slice(0,2)}</div>`;
+    }
+    return `
+    <div class="topbar">
+      <div class="brand">OR<span>ADOR</span></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="sound-toggle" onclick="toggleSound()" aria-label="Activar o silenciar sonido">${soundOn()?'🔊':'🔇'}</button>
+        <div class="rank-badge">RANGO ${rank}</div>
+      </div>
+    </div>
+    <div class="hud-panel">
+      <div class="dim">MISIÓN DE HOY · ${DAY_NAMES[new Date().getDay()].toUpperCase()}</div>
+      <h2 class="glow-cyan">${label}</h2>
+      <div class="week">${week}</div>
+      <button class="big-btn" onclick="go('brief',{type:'${dayType}'})">${already? '✓ Repetir entrenamiento' : '▶ Empezar entrenamiento (5 min)'}</button>
+      <div class="grid3">
+        <div class="stat"><div class="n">🔥 ${S.streak}</div><div class="dim">Racha (días)</div></div>
+        <div class="stat"><div class="n">${fmtTime(S.totalSeconds)}</div><div class="dim">Tiempo total</div></div>
+        <div class="stat"><div class="n">Nv.${lvl}</div><div class="dim">Comunicación</div></div>
+      </div>
+      <div class="xpbar"><div style="width:${pct}%"></div></div>
+      <div class="dim mono">${xpIntoLevel(S.xp)} / 150 XP</div>
+    </div>
+    <div class="hud-panel">
+      <h3 class="glow-purple">Modos extra</h3>
+      <div class="card-list">
+        <div class="item" onclick="go('extra',{mode:'camara'})">🎥 Modo Cámara <span class="tag">Teleprompter</span></div>
+        <div class="item" onclick="go('extra',{mode:'podcast'})">🎙️ Modo Podcast <span class="tag">Solo audio</span></div>
+        <div class="item" onclick="go('extra',{mode:'debate'})">⚔️ Modo Debate <span class="tag">La IA te contradice</span></div>
+        <div class="item" onclick="go('extra',{mode:'reunion'})">🧑‍💼 Modo Reunión <span class="tag">Cliente difícil</span></div>
+        <div class="item" onclick="go('extra',{mode:'entrevista'})">🎤 Modo Entrevista <span class="tag">Preguntas inesperadas</span></div>
+        <div class="item locked" onclick="go('extra',{mode:'youtube'})">📺 Modo YouTube <span class="tag">Próximamente</span></div>
+      </div>
+    </div>
+    <div class="nav">
+      <button class="btn" onclick="go('progreso')">Estado</button>
+      <button class="btn" onclick="go('guia')">Guía</button>
+    </div>`;
+  },
+
+  brief({type}){
+    const label = DAY_LABEL[type];
+    let helpText = ({
+      emociones:'Se te mostrará una historia corta. Cada fragmento tiene una emoción asignada: léelo intentando transmitir esa emoción con la voz, no solo con las palabras.',
+      velocidad:'Un texto con marcadores: "." pausa corta, "..." pausa larga, **negrita** para enfatizar, y avisos de MÁS DESPACIO / MÁS RÁPIDO. Puedes escuchar una voz de referencia antes de leerlo tú.',
+      storytelling:'Verás 6 palabras sueltas. Tienes que improvisar una historia de principio a fin usando todas, en el tiempo elegido.',
+      vender:'La app te da un reto de venta imposible. Tienes que defenderlo en voz alta como si fuera en serio.',
+      improvisacion:'Un tema al azar y un contador. Habla sin parar hasta que se acabe el tiempo. Cuenta tus muletillas mientras hablas.',
+      comunicador:'Elige un comunicador. Vas a leer un fragmento escrito imitando su estilo real: ritmo, pausas, énfasis.',
+      feedback:'Vas a hacer una sesión de habla libre y luego una autoevaluación honesta en 13 dimensiones. Sin trampas: cuanto más sincero seas, mejor te va a servir.'
+    })[type];
+    return `
+    <div class="topbar"><button class="btn ghost" onclick="go('home')">← Volver</button><div class="dim">${label}</div></div>
+    <div class="hud-panel">
+      <h2 class="glow-cyan">${label}</h2>
+      <p>${helpText}</p>
+      <div class="dim" style="margin-bottom:6px">Duración</div>
+      <div class="row" id="durRow">
+        <button class="btn dur" data-d="120">2 min</button>
+        <button class="btn primary dur" data-d="300">5 min</button>
+        <button class="btn dur" data-d="600">10 min</button>
+      </div>
+      <button class="big-btn" style="margin-top:20px" onclick="startTrain('${type}')">Empezar</button>
+    </div>`;
+  },
+
+  train({type, duration}){
+    return `
+    <div class="topbar">
+      <button class="btn ghost" onclick="abortTraining()">← Salir</button>
+      <div class="dim">${DAY_LABEL[type]} · ${Math.round(duration/60)} min</div>
+    </div>
+    <div id="trainArea"></div>`;
+  },
+
+  progreso(){
+    const lvl=levelFromXP(S.xp), rank=rankFromLevel(lvl);
+    const weak = Object.entries(S.weakPoints).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    return `
+    <div class="topbar"><button class="btn ghost" onclick="go('home')">← Volver</button><div class="dim">Estado</div></div>
+    <div class="hud-panel">
+      <h2 class="glow-purple">Rango ${rank} · Nivel ${lvl}</h2>
+      <div class="grid3">
+        <div class="stat"><div class="n">${S.xp}</div><div class="dim">XP total</div></div>
+        <div class="stat"><div class="n">🔥 ${S.streak}</div><div class="dim">Racha</div></div>
+        <div class="stat"><div class="n">${fmtTime(S.totalSeconds)}</div><div class="dim">Entrenado</div></div>
+      </div>
+    </div>
+    <div class="hud-panel">
+      <h3>Puntos débiles frecuentes</h3>
+      ${weak.length? weak.map(w=>`<div class="dim">• ${w[0]} <span class="mono">(${w[1]}×)</span></div>`).join('')
+        : '<div class="dim">Todavía no hay suficientes domingos de feedback registrados.</div>'}
+    </div>
+    <div class="hud-panel">
+      <h3>Historial reciente</h3>
+      ${S.history.slice(-10).reverse().map(h=>`<div class="dim mono">${h.date} · ${DAY_LABEL[h.type]||h.type} · ${Math.round(h.seconds/60)}min</div>`).join('') || '<div class="dim">Sin sesiones todavía.</div>'}
+    </div>`;
+  },
+
+  guia(){
+    return `
+    <div class="topbar"><button class="btn ghost" onclick="go('home')">← Volver</button><div class="dim">Guía</div></div>
+    <div class="hud-panel"><h3>Cómo funciona ORADOR</h3>
+      <p class="dim">Cada día de la semana trae un entrenamiento distinto. Entrena una vez al día para mantener la racha. El domingo es especial: feedback completo y autoevaluación en 13 dimensiones — esa autoevaluación decide en qué vas a enfocarte la semana siguiente.</p>
+      <p class="dim">Ninguna métrica aquí viene de análisis automático de vídeo o audio real: son autoevaluaciones estructuradas, honestas si tú lo eres. La app recuerda tus puntos débiles frecuentes y te los recuerda en "Estado".</p>
+    </div>`;
+  },
+
+  extra({mode}){
+    const titles={camara:'Modo Cámara',podcast:'Modo Podcast',debate:'Modo Debate',reunion:'Modo Reunión',entrevista:'Modo Entrevista',youtube:'Modo YouTube'};
+    if(mode==='youtube'){
+      return `<div class="topbar"><button class="btn ghost" onclick="go('home')">← Volver</button><div class="dim">${titles[mode]}</div></div>
+      <div class="hud-panel"><h2>📺 Modo YouTube</h2>
+      <p class="dim">Próximamente. Analizar tus vídeos reales de forma automática (energía, ritmo, caídas de atención) necesita un análisis de audio/vídeo que esta app, tal y como está montada, no puede hacer todavía. Cuando exista una forma honesta de hacerlo, se activa aquí.</p></div>`;
+    }
+    return `<div class="topbar"><button class="btn ghost" onclick="go('home')">← Volver</button><div class="dim">${titles[mode]}</div></div>
+    <div id="extraArea"></div>`;
+  }
+};
+
+// ---------- TRAIN FLOW ----------
+let TRAIN = {};
+function startTrain(type){
+  const active = document.querySelectorAll('.dur');
+  const sel = document.querySelector('.dur.primary') || document.querySelector('.dur');
+  const duration = parseInt(sel.getAttribute('data-d'),10);
+  TRAIN = {type, duration, startedAt:Date.now(), fillerCount:0};
+  ROUTE = {name:'train', type, duration};
+  document.getElementById('app').innerHTML = TEMPLATES.train(ROUTE);
+  renderTrainBody();
+}
+document.addEventListener('click', e=>{
+  if(e.target.classList && e.target.classList.contains('dur')){
+    document.querySelectorAll('.dur').forEach(b=>b.classList.remove('primary'));
+    e.target.classList.add('primary');
+  }
+});
+
+function renderTrainBody(){
+  const area = document.getElementById('trainArea');
+  const type = TRAIN.type;
+  if(type==='emociones') return renderEmociones(area);
+  if(type==='velocidad') return renderVelocidad(area);
+  if(type==='storytelling') return renderStorytelling(area);
+  if(type==='vender') return renderVender(area);
+  if(type==='improvisacion') return renderImprovisacion(area);
+  if(type==='comunicador') return renderComunicador(area);
+  if(type==='feedback') return renderFeedback(area);
+}
+
+function parsePaceText(body){
+  let html = body
+    .replace(/\*\*(.+?)\*\*/g, '<span class="emph">$1</span>')
+    .replace(/\(MÁS DESPACIO\)/g, '<span class="speed-tag">MÁS DESPACIO</span>')
+    .replace(/\(MÁS RÁPIDO\)/g, '<span class="speed-tag">MÁS RÁPIDO</span>')
+    .replace(/\.\.\./g, '<span class="pause-long">(pausa larga)</span>')
+    .replace(/(?<!\.)\.(?!\.)/g, '.<span class="pause-short"> · </span>');
+  return html;
+}
+
+function renderVelocidad(area){
+  const text = CONTENT.paceTexts[seedIndex('velocidad', CONTENT.paceTexts.length)];
+  area.innerHTML = `
+  <div class="hud-panel">
+    <h3 class="glow-cyan">${text.title}</h3>
+    <button class="btn ghost" id="ttsBtn">🔊 Escuchar voz de referencia</button>
+    <p style="line-height:1.9;margin-top:14px">${parsePaceText(text.body)}</p>
+    <button class="big-btn" onclick="finishTraining()">He terminado de leerlo</button>
+  </div>`;
+  const btn = area.querySelector('#ttsBtn');
+  btn.onclick = ()=>{
+    if(!('speechSynthesis' in window)){ btn.textContent='Tu navegador no soporta voz'; return; }
+    const u = new SpeechSynthesisUtterance(text.body.replace(/\*\*/g,'').replace(/\(MÁS[^)]+\)/g,''));
+    u.lang='es-ES'; u.rate=0.95;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  };
+}
+
+function renderEmociones(area){
+  const story = CONTENT.stories[seedIndex('emociones', CONTENT.stories.length)];
+  let idx=0;
+  const perSeg = Math.max(8, Math.floor(TRAIN.duration/story.segments.length));
+  area.innerHTML = `<div class="hud-panel">
+    <div class="dim" id="emoProgress"></div>
+    <h3 class="glow-cyan">${story.title}</h3>
+    <div id="emoBadge"></div>
+    <p id="emoText" style="font-size:1.05rem;line-height:1.8;min-height:120px"></p>
+    <div class="timer mono" id="emoTimer">${perSeg}</div>
+    <div class="dim" style="text-align:center">segundos en este fragmento</div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" onclick="emoPrev()">◀ Anterior</button>
+      <button class="btn primary" onclick="emoNext()">Siguiente ▶</button>
+    </div>
+    <button class="big-btn" onclick="finishTraining()" style="margin-top:16px">Terminar historia</button>
+  </div>`;
+  let timeLeft = perSeg, iv=null;
+  function paint(){
+    const seg = story.segments[idx];
+    const em = EMOTIONS[seg.e];
+    document.getElementById('emoBadge').innerHTML = `<div class="emotion-badge" style="background:${em.color}22;color:${em.color};border:1px solid ${em.color}">${em.emoji} ${em.label.toUpperCase()}</div>`;
+    document.getElementById('emoText').textContent = seg.t;
+    document.getElementById('emoProgress').textContent = 'FRAGMENTO ' + (idx+1) + ' DE ' + story.segments.length;
+    timeLeft = perSeg;
+    document.getElementById('emoTimer').textContent = timeLeft;
+    sfxEmotion(); vibrate(15);
+  }
+  function tick(){
+    timeLeft--; const t=document.getElementById('emoTimer'); if(t) t.textContent=Math.max(timeLeft,0);
+    if(timeLeft<=0 && idx<story.segments.length-1){ idx++; paint(); }
+  }
+  window.emoNext = ()=>{ if(idx<story.segments.length-1){ idx++; paint(); } };
+  window.emoPrev = ()=>{ if(idx>0){ idx--; paint(); } };
+  paint();
+  clearInterval(window.__emoIv); window.__emoIv = setInterval(tick,1000);
+}
+
+function renderStorytelling(area){
+  const words = CONTENT.wordSets[seedIndex('storytelling', CONTENT.wordSets.length)];
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-purple">Cuenta una historia con estas 6 palabras</h3>
+    <div class="grid3" style="margin:14px 0">${words.map(w=>`<div class="pulse-word">${w}</div>`).join('')}</div>
+    <div class="timer mono" id="cd">${fmtClock(TRAIN.duration)}</div>
+    <button class="big-btn" id="startCd">▶ Empezar cuenta atrás</button>
+  </div>`;
+  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=> goSelfEval(['Hook','Ritmo','Claridad','Final','Emoción']));
+}
+
+function renderVender(area){
+  const challenge = CONTENT.sellChallenges[seedIndex('vender', CONTENT.sellChallenges.length)];
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-cyan">Reto de venta</h3>
+    <div class="hud-panel" style="background:transparent"><h2>"${challenge}"</h2></div>
+    <div class="timer mono" id="cd">${fmtClock(TRAIN.duration)}</div>
+    <button class="big-btn" id="startCd">▶ Empezar</button>
+  </div>`;
+  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=> goSelfEval(['Claridad','Confianza','Manejo de objeciones','Cierre']));
+}
+
+function renderImprovisacion(area){
+  const topic = CONTENT.improvTopics[seedIndex('improv', CONTENT.improvTopics.length)];
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-purple">Tema al azar</h3>
+    <h2 class="glow-cyan">${topic}</h2>
+    <div class="timer mono" id="cd">${fmtClock(TRAIN.duration)}</div>
+    <button class="btn danger" id="fillerBtn" style="margin:10px 0">Muletilla dicha (<span id="fc">0</span>)</button>
+    <button class="big-btn" id="startCd">▶ Empezar</button>
+  </div>`;
+  let fillers=0;
+  area.querySelector('#fillerBtn').onclick = ()=>{ fillers++; area.querySelector('#fc').textContent=fillers; sfxFiller(); vibrate(35); };
+  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=>{
+    TRAIN.fillerCount = fillers;
+    goSelfEval(['Fluidez (sin bloqueos)','Organización','Energía'], {muletillas:fillers});
+  });
+}
+
+function renderComunicador(area){
+  const cardsHtml = CONTENT.communicators.map((c,i)=>`<div class="item" onclick="pickCommunicator(${i})">${c.name} <div class="dim">${c.note}</div></div>`).join('');
+  area.innerHTML = `<div class="hud-panel"><h3 class="glow-purple">Elige a quién imitar</h3><div class="card-list">${cardsHtml}</div></div>`;
+}
+function pickCommunicator(i){
+  const c = CONTENT.communicators[i];
+  const area = document.getElementById('trainArea');
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-cyan">${c.name}</h3>
+    <p class="dim">${c.note}</p>
+    <p style="line-height:1.9;font-size:1.05rem">${c.speech}</p>
+    <button class="big-btn" onclick="goSelfEval(['Ritmo','Pausas','Énfasis','Energía'])">He terminado</button>
+  </div>`;
+}
+
+function renderFeedback(area){
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-purple">Sesión libre de 5 minutos</h3>
+    <p class="dim">Habla libremente sobre cómo ha ido tu semana, un reto actual o cualquier tema. Si quieres, activa la cámara solo como espejo (no se graba ni se analiza nada).</p>
+    <button class="btn ghost" id="camBtn">🎥 Activar cámara (espejo)</button>
+    <video class="mirror" id="mirror" style="display:none" autoplay muted playsinline></video>
+    <div class="timer mono" id="cd" style="margin-top:14px">${fmtClock(TRAIN.duration)}</div>
+    <button class="big-btn" id="startCd">▶ Empezar</button>
+  </div>`;
+  area.querySelector('#camBtn').onclick = ()=> enableMirror(area.querySelector('#mirror'), area.querySelector('#camBtn'));
+  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=> goSelfEval(CONTENT.feedbackDims, {isSunday:true}));
+}
+
+function enableMirror(video, btn){
+  navigator.mediaDevices.getUserMedia({video:true, audio:false}).then(stream=>{
+    video.srcObject = stream; video.style.display='block'; btn.textContent='Cámara activa';
+    video._stream = stream;
+  }).catch(()=>{ btn.textContent='Cámara no disponible aquí'; });
+}
+
+function fmtClock(sec){ const m=Math.floor(sec/60), s=sec%60; return m+':'+String(s).padStart(2,'0'); }
+function runCountdown(seconds, onDone){
+  let left=seconds;
+  const cd = document.getElementById('cd');
+  const btn = document.getElementById('startCd');
+  if(btn) btn.disabled=true;
+  sfxStart(); vibrate(20);
+  clearInterval(window.__cdIv);
+  window.__cdIv = setInterval(()=>{
+    left--; if(cd) cd.textContent = fmtClock(Math.max(left,0));
+    if(left>0 && left<=3) sfxTick();
+    if(left<=0){ clearInterval(window.__cdIv); sfxTimeUp(); vibrate([60,40,60]); onDone(); }
+  },1000);
+}
+
+function goSelfEval(dims, extra){
+  const area = document.getElementById('trainArea');
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-cyan">Autoevaluación</h3>
+    <div id="sliders">${dims.map(d=>`
+      <div class="slider-row">
+        <label><span>${d}</span><span class="mono" id="v_${escId(d)}">5</span></label>
+        <input type="range" min="1" max="10" value="5" data-dim="${d}" oninput="document.getElementById('v_${escId(d)}').textContent=this.value">
+      </div>`).join('')}</div>
+    <button class="big-btn" onclick="submitSelfEval(${JSON.stringify(dims).replace(/"/g,'&quot;')}, ${JSON.stringify(extra||{}).replace(/"/g,'&quot;')})">Guardar y terminar</button>
+  </div>`;
+}
+function escId(d){ return d.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+function submitSelfEval(dims, extra){
+  stopTimers();
+  const scores = {};
+  dims.forEach(d=>{ const inp=document.querySelector(`input[data-dim="${d}"]`); scores[d]=parseInt(inp.value,10); });
+  completeSession(TRAIN.type, TRAIN.duration, Object.assign({scores}, extra||{}));
+  if(extra && extra.isSunday){
+    const sorted = Object.entries(scores).sort((a,b)=>a[1]-b[1]).slice(0,3).map(x=>x[0]);
+    registerWeakPoints(sorted);
+    showSummary(scores, sorted);
+  } else {
+    go('home');
+  }
+}
+
+function showSummary(scores, weakest){
+  const vals = Object.values(scores);
+  const avg = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10);
+  const best = Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const app = document.getElementById('app');
+  app.innerHTML = `<div class="hud-panel" style="text-align:center">
+    <div class="dim">INFORME SEMANAL</div>
+    <div class="mono" style="font-size:3.4rem;font-weight:900;color:var(--cyan);text-shadow:0 0 22px rgba(53,232,255,.55);line-height:1">${avg}</div>
+    <div class="dim">sobre 100</div>
+  </div>
+  <div class="hud-panel">
+    <h3 class="glow-purple">Tus 3 focos de la semana que viene</h3>
+    ${weakest.map((w,i)=>`<div style="display:flex;gap:10px;align-items:baseline;margin:8px 0">
+      <span class="mono" style="color:var(--danger);font-weight:900">${i+1}</span>
+      <span>${w} <span class="dim mono">${scores[w]}/10</span></span></div>`).join('')}
+  </div>
+  <div class="hud-panel">
+    <h3>Lo que ya dominas</h3>
+    ${best.map(b=>`<div class="dim">✓ ${b[0]} <span class="mono">${b[1]}/10</span></div>`).join('')}
+  </div>
+  <button class="big-btn" onclick="go('home')">Volver al inicio</button>`;
+}
+
+function finishTraining(){
+  stopTimers();
+  completeSession(TRAIN.type, TRAIN.duration, {});
+  go('home');
+}
+function stopTimers(){
+  clearInterval(window.__emoIv); clearInterval(window.__cdIv);
+}
+function abortTraining(){
+  stopTimers();
+  go('home');
+}
+
+// ---------- EXTRA MODES ----------
+function bindExtraEvents(){
+  const mode = ROUTE.mode;
+  const area = document.getElementById('extraArea');
+  if(!area) return;
+  if(mode==='camara') return renderCamara(area);
+  if(mode==='podcast') return renderPodcast(area);
+  if(mode==='debate') return renderDebate(area);
+  if(mode==='reunion') return renderReunion(area);
+  if(mode==='entrevista') return renderEntrevista(area);
+}
+
+function renderCamara(area){
+  const topic = CONTENT.improvTopics[seedIndex('camara', CONTENT.improvTopics.length)];
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-cyan">Teleprompter</h3>
+    <button class="btn ghost" id="camBtn2">🎥 Activar cámara</button>
+    <video class="mirror" id="mirror2" style="display:none" autoplay muted playsinline></video>
+    <div id="scrollText" style="height:140px;overflow:hidden;position:relative;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:10px;margin-top:10px">
+      <div id="scrollInner" style="position:relative;transition:top 20s linear">${topic}<br><br>Habla mirando a la cámara, no al texto. Deja pausas donde tú quieras.</div>
+    </div>
+    <button class="btn primary" id="scrollBtn" style="margin-top:10px">▶ Iniciar scroll</button>
+  </div>`;
+  area.querySelector('#camBtn2').onclick = ()=> enableMirror(area.querySelector('#mirror2'), area.querySelector('#camBtn2'));
+  area.querySelector('#scrollBtn').onclick = ()=>{
+    const inner = area.querySelector('#scrollInner');
+    inner.style.top = '-200px';
+  };
+}
+function renderPodcast(area){
+  const topic = CONTENT.improvTopics[seedIndex('podcast', CONTENT.improvTopics.length)];
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-purple">Solo audio, sin cámara</h3>
+    <h2 class="glow-cyan">${topic}</h2>
+    <div class="timer mono" id="cd">5:00</div>
+    <button class="big-btn" id="startCd">▶ Empezar</button>
+  </div>`;
+  area.querySelector('#startCd').onclick = ()=> runCountdown(300, ()=>{ go('home'); });
+}
+function renderDebate(area){
+  const d = CONTENT.debateTopics[seedIndex('debate', CONTENT.debateTopics.length)];
+  let ri=0;
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-cyan">Defiende esta postura</h3>
+    <h2>${d.topic}</h2>
+    <div id="rebuttal" class="dim" style="margin:14px 0;min-height:40px"></div>
+    <button class="btn primary" id="nextR">⚔️ Siguiente contraataque</button>
+  </div>`;
+  const rbox = area.querySelector('#rebuttal');
+  area.querySelector('#nextR').onclick = ()=>{
+    rbox.textContent = d.rebuttals[ri % d.rebuttals.length]; ri++;
+  };
+}
+function renderReunion(area){
+  let li=0;
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-cyan">Reunión con cliente difícil</h3>
+    <div id="line" style="min-height:60px;font-size:1.05rem"></div>
+    <button class="btn primary" id="nextL">Siguiente objeción</button>
+  </div>`;
+  const lbox = area.querySelector('#line');
+  function paint(){ lbox.textContent = CONTENT.meetingLines[li % CONTENT.meetingLines.length]; li++; }
+  paint();
+  area.querySelector('#nextL').onclick = paint;
+}
+function renderEntrevista(area){
+  let qi=0;
+  area.innerHTML = `<div class="hud-panel">
+    <h3 class="glow-cyan">Entrevista inesperada</h3>
+    <div id="q" style="min-height:60px;font-size:1.05rem"></div>
+    <button class="btn primary" id="nextQ">Siguiente pregunta</button>
+  </div>`;
+  const qbox = area.querySelector('#q');
+  function paint(){ qbox.textContent = CONTENT.interviewQuestions[qi % CONTENT.interviewQuestions.length]; qi++; }
+  paint();
+  area.querySelector('#nextQ').onclick = paint;
+}
+
+function toggleSound(){
+  localStorage.setItem('orador_sound', soundOn() ? 'off' : 'on');
+  if(soundOn()) sfxTap();
+  render();
+}
+
+render();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{ /* sin offline, la app sigue funcionando */ });
+  });
+}
+</script>
+</body>
+</html>
