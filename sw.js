@@ -1,6 +1,7 @@
-const CACHE_NAME = 'orador-v1';
+const CACHE_NAME = 'orador-v2';
 const ASSETS = [
   './index.html',
+  './content.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
