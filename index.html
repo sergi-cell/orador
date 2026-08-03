@@ -122,6 +122,33 @@ video.mirror{width:100%;border-radius:8px;transform:scaleX(-1);background:#000;m
 .pause-long{color:var(--purple);font-weight:900}
 .emph{color:var(--gold);font-weight:900}
 .speed-tag{font-family:var(--font-mono);font-size:.7rem;color:var(--pink);border:1px solid var(--pink);border-radius:3px;padding:1px 6px;margin:0 4px;white-space:nowrap;display:inline-block}
+.heat{display:grid;grid-template-columns:repeat(14,1fr);gap:4px;margin-top:10px}
+.heat .hm{
+  aspect-ratio:1;border-radius:2px;background:rgba(255,255,255,.06);
+  border:1px solid transparent;
+}
+.heat .hm.on{background:linear-gradient(135deg,var(--cyan),var(--purple));box-shadow:0 0 6px rgba(53,232,255,.4)}
+.heat .hm.now{border-color:var(--gold)}
+#prompterWrap{
+  height:240px;overflow:hidden;position:relative;margin-top:12px;
+  border:1px solid rgba(53,232,255,.3);border-radius:6px;
+  background:rgba(0,0,0,.4);
+}
+#prompterInner{
+  padding:16px;font-size:1.45rem;line-height:1.75;font-weight:600;
+  will-change:transform;
+}
+/* degradado arriba y abajo: la línea legible queda en el centro */
+#prompterMask{
+  position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(5,7,12,.95) 0%,transparent 30%,transparent 70%,rgba(5,7,12,.95) 100%);
+}
+.phase-box{
+  background:rgba(164,91,255,.08);border:1px solid rgba(164,91,255,.35);
+  border-radius:6px;padding:12px;margin:14px 0;min-height:96px;
+}
+.phase-box:empty{display:none}
+.phase-title{font-family:var(--font-head);font-size:1.5rem;font-weight:900;color:var(--purple);letter-spacing:.02em}
 /* acotación de interpretación: cómo decirlo, no qué decir */
 .stage-note{
   font-style:italic;color:var(--purple);font-size:.9rem;line-height:1.5;
@@ -406,6 +433,39 @@ function completeSession(dayType, seconds, extra){
     sfxComplete(); vibrate(25); flashScreen(false);
   }
 }
+function heatmapHTML(){
+  const done = new Set(S.history.map(h=>h.date));
+  const today = new Date();
+  let cells = '';
+  for(let i=55;i>=0;i--){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const iso = d.toISOString().slice(0,10);
+    const isToday = i===0;
+    cells += `<div class="hm ${done.has(iso)?'on':''} ${isToday?'now':''}" title="${iso}"></div>`;
+  }
+  return `<div class="heat">${cells}</div>`;
+}
+const ALL_LABELS = Object.assign({}, DAY_LABEL, {
+  'extra-podcast':'Podcast', 'extra-debate':'Debate',
+  'extra-reunion':'Reunión', 'extra-entrevista':'Entrevista'
+});
+function typeLabel(t){ return ALL_LABELS[t] || t; }
+function byTypeHTML(){
+  const labels = ALL_LABELS;
+  const counts = {};
+  S.history.forEach(h=>{ counts[h.type] = (counts[h.type]||0)+1; });
+  const rows = Object.keys(labels).map(k=>({k, n:counts[k]||0}));
+  if(!S.history.length) return '<div class="dim">Cuando lleves unas sesiones, aquí verás qué días te saltas.</div>';
+  const max = Math.max(...rows.map(r=>r.n), 1);
+  return rows.sort((a,b)=>b.n-a.n).map(r=>`
+    <div style="display:flex;align-items:center;gap:8px;margin:5px 0">
+      <div style="flex:0 0 42%;font-size:.82rem">${labels[r.k]}</div>
+      <div style="flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden">
+        <div style="width:${Math.round(r.n/max*100)}%;height:100%;background:${r.n?'linear-gradient(90deg,var(--cyan),var(--purple))':'transparent'}"></div>
+      </div>
+      <div class="mono dim" style="flex:0 0 22px;text-align:right">${r.n}</div>
+    </div>`).join('');
+}
 function showToast(title, sub){
   const el = document.createElement('div');
   el.className = 'levelup-toast';
@@ -545,13 +605,22 @@ const TEMPLATES = {
       </div>
     </div>
     <div class="hud-panel">
+      <h3>Últimas 8 semanas</h3>
+      ${heatmapHTML()}
+      <div class="dim" style="margin-top:6px">Cada cuadro es un día. Los encendidos son los que entrenaste.</div>
+    </div>
+    <div class="hud-panel">
+      <h3>Qué entrenas y qué evitas</h3>
+      ${byTypeHTML()}
+    </div>
+    <div class="hud-panel">
       <h3>Puntos débiles frecuentes</h3>
       ${weak.length? weak.map(w=>`<div class="dim">• ${w[0]} <span class="mono">(${w[1]}×)</span></div>`).join('')
-        : '<div class="dim">Todavía no hay suficientes domingos de feedback registrados.</div>'}
+        : '<div class="dim">Aparecen a partir del primer domingo de feedback.</div>'}
     </div>
     <div class="hud-panel">
       <h3>Historial reciente</h3>
-      ${S.history.slice(-10).reverse().map(h=>`<div class="dim mono">${h.date} · ${DAY_LABEL[h.type]||h.type} · ${Math.round(h.seconds/60)}min</div>`).join('') || '<div class="dim">Sin sesiones todavía.</div>'}
+      ${S.history.slice(-10).reverse().map(h=>`<div class="dim mono">${h.date} · ${typeLabel(h.type)} · ${Math.round(h.seconds/60)} min</div>`).join('') || '<div class="dim">Sin sesiones todavía.</div>'}
     </div>`;
   },
 
@@ -671,10 +740,12 @@ function renderStorytelling(area){
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-purple">Cuenta una historia con estas 6 palabras</h3>
     <div class="grid3" style="margin:14px 0">${words.map(w=>`<div class="pulse-word">${w}</div>`).join('')}</div>
+    <div id="phaseBox" class="phase-box"></div>
     <div class="timer mono" id="cd">${fmtClock(TRAIN.duration)}</div>
-    <button class="big-btn" id="startCd">▶ Empezar cuenta atrás</button>
+    <button class="btn ghost" id="pauseCd" onclick="togglePause()" style="display:none;width:100%;margin-top:8px">❚❚ Pausa</button>
+    <button class="big-btn" id="startCd">▶ Empezar</button>
   </div>`;
-  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=> goSelfEval(['Hook','Ritmo','Claridad','Final','Emoción']));
+  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=> goSelfEval(['Hook','Ritmo','Claridad','Final','Emoción']), 'storytelling');
 }
 
 function renderVender(area){
@@ -682,10 +753,12 @@ function renderVender(area){
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-cyan">Reto de venta</h3>
     <div class="hud-panel" style="background:transparent"><h2>"${challenge}"</h2></div>
+    <div id="phaseBox" class="phase-box"></div>
     <div class="timer mono" id="cd">${fmtClock(TRAIN.duration)}</div>
+    <button class="btn ghost" id="pauseCd" onclick="togglePause()" style="display:none;width:100%;margin-top:8px">❚❚ Pausa</button>
     <button class="big-btn" id="startCd">▶ Empezar</button>
   </div>`;
-  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=> goSelfEval(['Claridad','Confianza','Manejo de objeciones','Cierre']));
+  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=> goSelfEval(['Claridad','Confianza','Manejo de objeciones','Cierre']), 'vender');
 }
 
 function renderImprovisacion(area){
@@ -693,8 +766,10 @@ function renderImprovisacion(area){
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-purple">Tema al azar</h3>
     <h2 class="glow-cyan">${topic}</h2>
+    <div id="phaseBox" class="phase-box"></div>
     <div class="timer mono" id="cd">${fmtClock(TRAIN.duration)}</div>
-    <button class="btn danger" id="fillerBtn" style="margin:10px 0">Muletilla dicha (<span id="fc">0</span>)</button>
+    <button class="btn danger" id="fillerBtn" style="margin:10px 0;width:100%">Muletilla dicha (<span id="fc">0</span>)</button>
+    <button class="btn ghost" id="pauseCd" onclick="togglePause()" style="display:none;width:100%;margin-bottom:8px">❚❚ Pausa</button>
     <button class="big-btn" id="startCd">▶ Empezar</button>
   </div>`;
   let fillers=0;
@@ -702,7 +777,7 @@ function renderImprovisacion(area){
   area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=>{
     TRAIN.fillerCount = fillers;
     goSelfEval(['Fluidez (sin bloqueos)','Organización','Energía'], {muletillas:fillers});
-  });
+  }, 'improvisacion');
 }
 
 function renderComunicador(area){
@@ -727,11 +802,13 @@ function renderFeedback(area){
     <p class="dim">Habla libremente sobre cómo ha ido tu semana, un reto actual o cualquier tema. Si quieres, activa la cámara solo como espejo (no se graba ni se analiza nada).</p>
     <button class="btn ghost" id="camBtn">🎥 Activar cámara (espejo)</button>
     <video class="mirror" id="mirror" style="display:none" autoplay muted playsinline></video>
+    <div id="phaseBox" class="phase-box"></div>
     <div class="timer mono" id="cd" style="margin-top:14px">${fmtClock(TRAIN.duration)}</div>
+    <button class="btn ghost" id="pauseCd" onclick="togglePause()" style="display:none;width:100%;margin-top:8px">❚❚ Pausa</button>
     <button class="big-btn" id="startCd">▶ Empezar</button>
   </div>`;
   area.querySelector('#camBtn').onclick = ()=> enableMirror(area.querySelector('#mirror'), area.querySelector('#camBtn'));
-  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=> goSelfEval(CONTENT.feedbackDims, {isSunday:true}));
+  area.querySelector('#startCd').onclick = ()=> runCountdown(TRAIN.duration, ()=> goSelfEval(CONTENT.feedbackDims, {isSunday:true}), 'feedback');
 }
 
 function enableMirror(video, btn){
@@ -742,29 +819,124 @@ function enableMirror(video, btn){
 }
 
 function fmtClock(sec){ const m=Math.floor(sec/60), s=sec%60; return m+':'+String(s).padStart(2,'0'); }
-function runCountdown(seconds, onDone){
-  let left=seconds;
+
+/* Guion por fases. Sin esto, hablar 5 minutos seguidos improvisando es
+   casi imposible: te quedas seco al minuto y abandonas. Cada fase ocupa
+   una fracción del tiempo total, así funciona igual con 2, 5 o 10 min. */
+const PHASES = {
+  storytelling:[
+    {at:0,    title:'Preséntalo',  hint:'¿Quién es? ¿Dónde está? Usa ya una de las palabras.'},
+    {at:0.15, title:'Algo cambia', hint:'Que pase algo que rompa la normalidad. Mete la segunda palabra.'},
+    {at:0.40, title:'Se complica', hint:'Ponlo peor. Que tenga que elegir algo difícil.'},
+    {at:0.65, title:'El giro',     hint:'Algo que no se esperaba nadie. Aquí van las palabras que te queden.'},
+    {at:0.85, title:'Cierra',      hint:'¿Qué queda al final? Una frase corta y para.'}
+  ],
+  vender:[
+    {at:0,    title:'Engancha',    hint:'Una frase que le haga escucharte. Nada de "hola, te cuento".'},
+    {at:0.15, title:'El problema', hint:'Descríbele el dolor mejor de lo que lo describiría él.'},
+    {at:0.40, title:'La solución', hint:'Ahora sí: qué es y cómo funciona. Concreto.'},
+    {at:0.65, title:'La objeción', hint:'Di en voz alta la pega que te va a poner. Y respóndela.'},
+    {at:0.85, title:'Cierra',      hint:'Pide algo concreto. Un sí o un no, no un "ya te diré".'}
+  ],
+  improvisacion:[
+    {at:0,    title:'Tu postura',  hint:'Di ya lo que piensas. Sin calentamiento.'},
+    {at:0.15, title:'Por qué',     hint:'La primera razón, la más fuerte.'},
+    {at:0.40, title:'Un ejemplo',  hint:'Algo real que te haya pasado a ti o a alguien que conoces.'},
+    {at:0.65, title:'La otra cara',hint:'¿Qué diría alguien que piensa lo contrario? Dilo tú.'},
+    {at:0.85, title:'Cierra',      hint:'Vuelve a tu postura, ahora con más matices.'}
+  ],
+  feedback:[
+    {at:0,    title:'Cómo ha ido la semana', hint:'Sin pensarlo mucho. Lo primero que te salga.'},
+    {at:0.25, title:'Lo que mejor salió',    hint:'Cuéntalo con detalle, como si fuera una historia.'},
+    {at:0.55, title:'Lo que se atascó',      hint:'Qué pasó exactamente y qué harías distinto.'},
+    {at:0.80, title:'La semana que viene',   hint:'Una sola cosa concreta. Dilo en voz alta.'}
+  ]
+};
+PHASES.podcast = PHASES.improvisacion;
+
+function phaseAt(type, elapsedRatio){
+  const list = PHASES[type];
+  if(!list) return null;
+  let cur = list[0], next = null;
+  for(let i=0;i<list.length;i++){
+    if(elapsedRatio >= list[i].at){ cur = list[i]; next = list[i+1] || null; }
+  }
+  return {cur, next};
+}
+function renderPhase(type, elapsedRatio){
+  const box = document.getElementById('phaseBox');
+  if(!box) return;
+  const p = phaseAt(type, elapsedRatio);
+  if(!p){ box.innerHTML=''; return; }
+  box.innerHTML = `
+    <div class="dim">AHORA</div>
+    <div class="phase-title">${p.cur.title}</div>
+    <div class="stage-note" style="margin:6px 0 0">${p.cur.hint}</div>
+    ${p.next ? `<div class="dim" style="margin-top:8px">Después: ${p.next.title}</div>` : ''}`;
+}
+
+let PAUSED = false;
+function runCountdown(seconds, onDone, type){
+  let left = seconds;
   const cd = document.getElementById('cd');
   const btn = document.getElementById('startCd');
-  if(btn) btn.disabled=true;
+  const pauseBtn = document.getElementById('pauseCd');
+  if(btn) btn.style.display = 'none';
+  if(pauseBtn) pauseBtn.style.display = 'block';
+  PAUSED = false;
   sfxStart(); vibrate(20);
+  renderPhase(type, 0);
   clearInterval(window.__cdIv);
   window.__cdIv = setInterval(()=>{
-    left--; if(cd) cd.textContent = fmtClock(Math.max(left,0));
+    if(PAUSED) return;
+    left--;
+    if(cd) cd.textContent = fmtClock(Math.max(left,0));
+    renderPhase(type, 1 - left/seconds);
     if(left>0 && left<=3) sfxTick();
     if(left<=0){ clearInterval(window.__cdIv); sfxTimeUp(); vibrate([60,40,60]); onDone(); }
   },1000);
 }
+function togglePause(){
+  PAUSED = !PAUSED;
+  const b = document.getElementById('pauseCd');
+  if(b) b.textContent = PAUSED ? '▶ Reanudar' : '❚❚ Pausa';
+  sfxTap();
+}
 
+// Agrupamos las 13 del domingo: de golpe son un muro y se pasa de largo
+// dejándolo todo en 5, que da siempre 50/100 y no sirve de nada.
+const DIM_GROUPS = {
+  'Voz':['Claridad','Ritmo adecuado','Vocalización','Uso de pausas','Variación de tono'],
+  'Presencia':['Energía','Mirada a cámara','Sonrisa','Expresividad','Confianza'],
+  'Contenido':['Hablar sin muletillas','Storytelling','Persuasión']
+};
+function groupOf(dim){
+  for(const g in DIM_GROUPS) if(DIM_GROUPS[g].includes(dim)) return g;
+  return null;
+}
+function sliderRow(d){
+  return `<div class="slider-row">
+    <label><span>${d}</span><span class="mono" id="v_${escId(d)}">5</span></label>
+    <input type="range" min="1" max="10" value="5" data-dim="${d}" oninput="document.getElementById('v_${escId(d)}').textContent=this.value">
+  </div>`;
+}
 function goSelfEval(dims, extra){
   const area = document.getElementById('trainArea');
+  const grouped = dims.length > 6 && dims.every(d=>groupOf(d));
+  let body;
+  if(grouped){
+    body = Object.keys(DIM_GROUPS).map(g=>`
+      <div style="margin-bottom:18px">
+        <div class="dim" style="letter-spacing:.12em;margin-bottom:4px">${g.toUpperCase()}</div>
+        ${DIM_GROUPS[g].filter(d=>dims.includes(d)).map(sliderRow).join('')}
+      </div>`).join('');
+  } else {
+    body = dims.map(sliderRow).join('');
+  }
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-cyan">Autoevaluación</h3>
-    <div id="sliders">${dims.map(d=>`
-      <div class="slider-row">
-        <label><span>${d}</span><span class="mono" id="v_${escId(d)}">5</span></label>
-        <input type="range" min="1" max="10" value="5" data-dim="${d}" oninput="document.getElementById('v_${escId(d)}').textContent=this.value">
-      </div>`).join('')}</div>
+    <p class="dim">10 = lo hiciste bien. Sé honesto: de esto salen tus 3 focos de la semana.</p>
+    <div id="sliders">${body}</div>
     <button class="big-btn" onclick="submitSelfEval(${JSON.stringify(dims).replace(/"/g,'&quot;')}, ${JSON.stringify(extra||{}).replace(/"/g,'&quot;')})">Guardar y terminar</button>
   </div>`;
 }
@@ -816,6 +988,9 @@ function stopTimers(){
   clearInterval(window.__emoIv); clearInterval(window.__cdIv);
 }
 function abortTraining(){
+  // si ya había empezado el cronómetro, avisamos: salir pierde la sesión
+  const empezado = !!window.__cdIv || !!window.__emoIv;
+  if(empezado && !confirm('¿Salir del entrenamiento? No se guardará esta sesión.')) return;
   stopTimers();
   go('home');
 }
@@ -833,69 +1008,148 @@ function bindExtraEvents(){
 }
 
 function renderCamara(area){
-  const topic = CONTENT.improvTopics[seedIndex('camara', CONTENT.improvTopics.length)];
+  // Un teleprompter necesita un texto largo de verdad. Antes tenía dos líneas
+  // y hacía scroll de 200px, que no servía de nada.
+  const story = CONTENT.stories[seedIndex('camara', CONTENT.stories.length)];
+  const full = story.segments.map(s=>s.t).join(' ');
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-cyan">Teleprompter</h3>
-    <button class="btn ghost" id="camBtn2">🎥 Activar cámara</button>
+    <p class="dim">Texto: "${story.title}". Habla mirando a la cámara, no al texto.</p>
+    <button class="btn ghost" id="camBtn2" style="width:100%">🎥 Activar cámara</button>
     <video class="mirror" id="mirror2" style="display:none" autoplay muted playsinline></video>
-    <div id="scrollText" style="height:140px;overflow:hidden;position:relative;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:10px;margin-top:10px">
-      <div id="scrollInner" style="position:relative;transition:top 20s linear">${topic}<br><br>Habla mirando a la cámara, no al texto. Deja pausas donde tú quieras.</div>
+    <div id="prompterWrap">
+      <div id="prompterInner">${full}</div>
+      <div id="prompterMask"></div>
     </div>
-    <button class="btn primary" id="scrollBtn" style="margin-top:10px">▶ Iniciar scroll</button>
+    <div class="dim" style="margin-top:10px">Velocidad</div>
+    <div class="row">
+      <button class="btn spd" data-s="0.55">Lenta</button>
+      <button class="btn primary spd" data-s="0.85">Normal</button>
+      <button class="btn spd" data-s="1.25">Rápida</button>
+    </div>
+    <button class="btn primary" id="scrollBtn" style="width:100%;margin-top:10px">▶ Iniciar</button>
+    <button class="btn ghost" id="resetBtn" style="width:100%;margin-top:6px">↺ Volver al principio</button>
   </div>`;
-  area.querySelector('#camBtn2').onclick = ()=> enableMirror(area.querySelector('#mirror2'), area.querySelector('#camBtn2'));
-  area.querySelector('#scrollBtn').onclick = ()=>{
-    const inner = area.querySelector('#scrollInner');
-    inner.style.top = '-200px';
+  const inner = area.querySelector('#prompterInner');
+  let speed = 0.85, raf = null, pos = 0, running = false;
+  area.querySelectorAll('.spd').forEach(b=>{
+    b.onclick = ()=>{
+      area.querySelectorAll('.spd').forEach(x=>x.classList.remove('primary'));
+      b.classList.add('primary');
+      speed = parseFloat(b.dataset.s);
+      sfxTap();
+    };
+  });
+  function step(){
+    if(!running) return;
+    pos += speed;
+    inner.style.transform = 'translateY(' + (-pos) + 'px)';
+    if(pos < inner.scrollHeight) raf = requestAnimationFrame(step);
+    else { running = false; area.querySelector('#scrollBtn').textContent = '▶ Iniciar'; }
+  }
+  const scrollBtn = area.querySelector('#scrollBtn');
+  scrollBtn.onclick = ()=>{
+    running = !running;
+    scrollBtn.textContent = running ? '❚❚ Pausa' : '▶ Continuar';
+    sfxTap();
+    if(running) raf = requestAnimationFrame(step); else cancelAnimationFrame(raf);
   };
+  area.querySelector('#resetBtn').onclick = ()=>{
+    running = false; cancelAnimationFrame(raf); pos = 0;
+    inner.style.transform = 'translateY(0)';
+    area.querySelector('#scrollBtn').textContent = '▶ Iniciar';
+  };
+  area.querySelector('#camBtn2').onclick = ()=> enableMirror(area.querySelector('#mirror2'), area.querySelector('#camBtn2'));
 }
 function renderPodcast(area){
   const topic = CONTENT.improvTopics[seedIndex('podcast', CONTENT.improvTopics.length)];
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-purple">Solo audio, sin cámara</h3>
     <h2 class="glow-cyan">${topic}</h2>
+    <p class="dim">Como si grabaras un podcast: sin gestos, todo tiene que estar en la voz.</p>
+    <div id="phaseBox" class="phase-box"></div>
     <div class="timer mono" id="cd">5:00</div>
+    <button class="btn ghost" id="pauseCd" onclick="togglePause()" style="display:none;width:100%;margin-top:8px">❚❚ Pausa</button>
     <button class="big-btn" id="startCd">▶ Empezar</button>
   </div>`;
-  area.querySelector('#startCd').onclick = ()=> runCountdown(300, ()=>{ go('home'); });
+  TRAIN = {type:'extra-podcast', duration:300};
+  area.querySelector('#startCd').onclick = ()=> runCountdown(300, ()=> finishExtra('Podcast'), 'podcast');
 }
 function renderDebate(area){
   const d = CONTENT.debateTopics[seedIndex('debate', CONTENT.debateTopics.length)];
-  let ri=0;
+  let ri = 0;
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-cyan">Defiende esta postura</h3>
     <h2>${d.topic}</h2>
-    <div id="rebuttal" class="dim" style="margin:14px 0;min-height:40px"></div>
-    <button class="btn primary" id="nextR">⚔️ Siguiente contraataque</button>
+    <p class="dim">Defiéndela en voz alta aunque no estés de acuerdo. Cuando te quedes sin argumentos, pide contraataque.</p>
+    <div id="rebuttal" class="phase-box" style="min-height:70px"></div>
+    <button class="btn primary" id="nextR" style="width:100%">⚔️ Contraataque 1</button>
+    <div class="timer mono" id="cd" style="margin-top:14px">3:00</div>
+    <button class="btn ghost" id="pauseCd" onclick="togglePause()" style="display:none;width:100%;margin-top:8px">❚❚ Pausa</button>
+    <button class="big-btn" id="startCd">▶ Empezar</button>
   </div>`;
+  TRAIN = {type:'extra-debate', duration:180};
   const rbox = area.querySelector('#rebuttal');
-  area.querySelector('#nextR').onclick = ()=>{
-    rbox.textContent = d.rebuttals[ri % d.rebuttals.length]; ri++;
+  const btn = area.querySelector('#nextR');
+  btn.onclick = ()=>{
+    rbox.innerHTML = '<div class="dim">TE RESPONDE</div><div style="font-size:1.05rem;margin-top:4px">'
+      + d.rebuttals[ri % d.rebuttals.length] + '</div>';
+    ri++;
+    btn.textContent = '⚔️ Contraataque ' + (ri+1);
+    sfxFiller(); vibrate(25);
   };
+  area.querySelector('#startCd').onclick = ()=> runCountdown(180, ()=> finishExtra('Debate'));
 }
 function renderReunion(area){
-  let li=0;
+  let li = seedIndex('reunion', CONTENT.meetingLines.length);
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-cyan">Reunión con cliente difícil</h3>
-    <div id="line" style="min-height:60px;font-size:1.05rem"></div>
-    <button class="btn primary" id="nextL">Siguiente objeción</button>
+    <p class="dim">Responde en voz alta a cada objeción, como si lo tuvieras delante.</p>
+    <div id="line" class="phase-box" style="min-height:70px"></div>
+    <button class="btn primary" id="nextL" style="width:100%">Siguiente objeción</button>
+    <div class="timer mono" id="cd" style="margin-top:14px">5:00</div>
+    <button class="btn ghost" id="pauseCd" onclick="togglePause()" style="display:none;width:100%;margin-top:8px">❚❚ Pausa</button>
+    <button class="big-btn" id="startCd">▶ Empezar</button>
   </div>`;
+  TRAIN = {type:'extra-reunion', duration:300};
   const lbox = area.querySelector('#line');
-  function paint(){ lbox.textContent = CONTENT.meetingLines[li % CONTENT.meetingLines.length]; li++; }
+  function paint(){
+    lbox.innerHTML = '<div class="dim">EL CLIENTE DICE</div><div style="font-size:1.05rem;margin-top:4px">'
+      + CONTENT.meetingLines[li % CONTENT.meetingLines.length].replace(/^El cliente dice: /,'') + '</div>';
+    li++; sfxEmotion(); vibrate(15);
+  }
   paint();
   area.querySelector('#nextL').onclick = paint;
+  area.querySelector('#startCd').onclick = ()=> runCountdown(300, ()=> finishExtra('Reunión'));
 }
 function renderEntrevista(area){
-  let qi=0;
+  let qi = seedIndex('entrevista', CONTENT.interviewQuestions.length);
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-cyan">Entrevista inesperada</h3>
-    <div id="q" style="min-height:60px;font-size:1.05rem"></div>
-    <button class="btn primary" id="nextQ">Siguiente pregunta</button>
+    <p class="dim">Contesta sin prepararlo. Si dudas más de tres segundos, esa es justo la que hay que trabajar.</p>
+    <div id="q" class="phase-box" style="min-height:70px"></div>
+    <button class="btn primary" id="nextQ" style="width:100%">Siguiente pregunta</button>
+    <div class="timer mono" id="cd" style="margin-top:14px">5:00</div>
+    <button class="btn ghost" id="pauseCd" onclick="togglePause()" style="display:none;width:100%;margin-top:8px">❚❚ Pausa</button>
+    <button class="big-btn" id="startCd">▶ Empezar</button>
   </div>`;
+  TRAIN = {type:'extra-entrevista', duration:300};
   const qbox = area.querySelector('#q');
-  function paint(){ qbox.textContent = CONTENT.interviewQuestions[qi % CONTENT.interviewQuestions.length]; qi++; }
+  function paint(){
+    qbox.innerHTML = '<div class="dim">TE PREGUNTAN</div><div style="font-size:1.05rem;margin-top:4px">'
+      + CONTENT.interviewQuestions[qi % CONTENT.interviewQuestions.length] + '</div>';
+    qi++; sfxEmotion(); vibrate(15);
+  }
   paint();
   area.querySelector('#nextQ').onclick = paint;
+  area.querySelector('#startCd').onclick = ()=> runCountdown(300, ()=> finishExtra('Entrevista'));
+}
+
+// los modos extra ahora cuentan: suman tiempo, XP y racha como cualquier sesión
+function finishExtra(nombre){
+  stopTimers();
+  completeSession(TRAIN.type || 'extra', TRAIN.duration || 300, {modo:nombre});
+  setTimeout(()=>go('home'), 1200);
 }
 
 function toggleSound(){
