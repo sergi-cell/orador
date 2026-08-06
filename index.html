@@ -554,7 +554,7 @@ const TEMPLATES = {
       emociones:'Se te mostrará una historia corta. Cada fragmento tiene una emoción asignada: léelo intentando transmitir esa emoción con la voz, no solo con las palabras.',
       velocidad:'Un texto con marcadores: "." pausa corta, "..." pausa larga, **negrita** para enfatizar, y avisos de MÁS DESPACIO / MÁS RÁPIDO. Puedes escuchar una voz de referencia antes de leerlo tú.',
       storytelling:'Verás 6 palabras sueltas. Tienes que improvisar una historia de principio a fin usando todas, en el tiempo elegido.',
-      vender:'La app te da un reto de venta imposible. Tienes que defenderlo en voz alta como si fuera en serio.',
+      vender:'La app te da un reto de venta imposible, con el contexto de quién te escucha y por qué te va a decir que no. Defiéndelo en voz alta como si fuera en serio.',
       improvisacion:'Un tema al azar y un contador. Habla sin parar hasta que se acabe el tiempo. Cuenta tus muletillas mientras hablas.',
       comunicador:'Elige un comunicador. Vas a leer un fragmento escrito imitando su estilo real: ritmo, pausas, énfasis.',
       feedback:'Vas a hacer una sesión de habla libre y luego una autoevaluación honesta en 13 dimensiones. Sin trampas: cuanto más sincero seas, mejor te va a servir.'
@@ -749,10 +749,12 @@ function renderStorytelling(area){
 }
 
 function renderVender(area){
-  const challenge = CONTENT.sellChallenges[seedIndex('vender', CONTENT.sellChallenges.length)];
+  const item = CONTENT.sellChallenges[seedIndex('vender', CONTENT.sellChallenges.length)];
   area.innerHTML = `<div class="hud-panel">
-    <h3 class="glow-cyan">Reto de venta</h3>
-    <div class="hud-panel" style="background:transparent"><h2>"${challenge}"</h2></div>
+    <h3 class="glow-purple">Contexto</h3>
+    <p class="dim">${item.ctx}</p>
+    <h3 class="glow-cyan" style="margin-top:14px">Reto de venta</h3>
+    <div class="hud-panel" style="background:transparent"><h2>"${item.c}"</h2></div>
     <div id="phaseBox" class="phase-box"></div>
     <div class="timer mono" id="cd">${fmtClock(TRAIN.duration)}</div>
     <button class="btn ghost" id="pauseCd" onclick="togglePause()" style="display:none;width:100%;margin-top:8px">❚❚ Pausa</button>
@@ -1012,6 +1014,7 @@ function renderCamara(area){
   // y hacía scroll de 200px, que no servía de nada.
   const story = CONTENT.stories[seedIndex('camara', CONTENT.stories.length)];
   const full = story.segments.map(s=>s.t).join(' ');
+  const words = countWords(full);
   area.innerHTML = `<div class="hud-panel">
     <h3 class="glow-cyan">Teleprompter</h3>
     <p class="dim">Texto: "${story.title}". Habla mirando a la cámara, no al texto.</p>
@@ -1023,26 +1026,44 @@ function renderCamara(area){
     </div>
     <div class="dim" style="margin-top:10px">Velocidad</div>
     <div class="row">
-      <button class="btn spd" data-s="0.55">Lenta</button>
-      <button class="btn primary spd" data-s="0.85">Normal</button>
-      <button class="btn spd" data-s="1.25">Rápida</button>
+      <button class="btn spd" data-s="0.8">Lenta</button>
+      <button class="btn primary spd" data-s="1">Normal</button>
+      <button class="btn spd" data-s="1.3">Rápida</button>
     </div>
+    <div class="dim mono" id="spdInfo" style="margin-top:4px"></div>
     <button class="btn primary" id="scrollBtn" style="width:100%;margin-top:10px">▶ Iniciar</button>
     <button class="btn ghost" id="resetBtn" style="width:100%;margin-top:6px">↺ Volver al principio</button>
   </div>`;
   const inner = area.querySelector('#prompterInner');
-  let speed = 0.85, raf = null, pos = 0, running = false;
+  const spdInfo = area.querySelector('#spdInfo');
+  // El scroll no va en px por frame (eso depende del Hz de la pantalla y
+  // encima iba a un ritmo de lectura imposible, ~300+ palabras/min).
+  // Se calcula en base al mismo ritmo real de la app: 115 palabras/min
+  // leyendo actuando (readingSeconds), repartido en los px que ocupa el texto.
+  const pxPerWord = inner.scrollHeight / Math.max(words, 1);
+  const BASE_WPM = 115;
+  let speedMult = 1, raf = null, pos = 0, running = false, lastTs = null;
+  function updateInfo(){
+    const wpm = Math.round(BASE_WPM * speedMult);
+    spdInfo.textContent = `~${wpm} palabras/min · texto completo en ${fmtMins(readingSeconds(words) / speedMult)}`;
+  }
+  updateInfo();
   area.querySelectorAll('.spd').forEach(b=>{
     b.onclick = ()=>{
       area.querySelectorAll('.spd').forEach(x=>x.classList.remove('primary'));
       b.classList.add('primary');
-      speed = parseFloat(b.dataset.s);
+      speedMult = parseFloat(b.dataset.s);
+      updateInfo();
       sfxTap();
     };
   });
-  function step(){
-    if(!running) return;
-    pos += speed;
+  function step(ts){
+    if(!running){ lastTs = null; return; }
+    if(lastTs === null) lastTs = ts;
+    const dt = (ts - lastTs) / 1000;
+    lastTs = ts;
+    const pxPerSec = (BASE_WPM * speedMult / 60) * pxPerWord;
+    pos += pxPerSec * dt;
     inner.style.transform = 'translateY(' + (-pos) + 'px)';
     if(pos < inner.scrollHeight) raf = requestAnimationFrame(step);
     else { running = false; area.querySelector('#scrollBtn').textContent = '▶ Iniciar'; }
@@ -1055,7 +1076,7 @@ function renderCamara(area){
     if(running) raf = requestAnimationFrame(step); else cancelAnimationFrame(raf);
   };
   area.querySelector('#resetBtn').onclick = ()=>{
-    running = false; cancelAnimationFrame(raf); pos = 0;
+    running = false; cancelAnimationFrame(raf); pos = 0; lastTs = null;
     inner.style.transform = 'translateY(0)';
     area.querySelector('#scrollBtn').textContent = '▶ Iniciar';
   };
